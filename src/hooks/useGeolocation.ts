@@ -32,26 +32,42 @@ export function useGeolocation(enabled: boolean, opts?: PositionOptions) {
       return;
     }
 
+    // Helper to start watching
+    const startWatch = (highAccuracy: boolean) => {
+      watchId.current = navigator.geolocation.watchPosition(
+        (pos) => {
+          setReading({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            accuracy: pos.coords.accuracy,
+            t: pos.timestamp
+          });
+          // If we recovered from an error, clear it
+          setStatus({ kind: "watching" });
+        },
+        (err) => {
+          // If high accuracy failed, try low accuracy
+          if (highAccuracy) {
+            console.warn("High accuracy GPS failed, falling back to low accuracy...", err);
+            if (watchId.current !== null) {
+              navigator.geolocation.clearWatch(watchId.current);
+            }
+            startWatch(false);
+          } else {
+            setStatus({ kind: "error", message: err.message || "Unknown error acquiring position" });
+          }
+        },
+        {
+          enableHighAccuracy: highAccuracy,
+          maximumAge: 1000,
+          timeout: 15000,
+          ...opts
+        }
+      );
+    };
+
     setStatus({ kind: "watching" });
-    watchId.current = navigator.geolocation.watchPosition(
-      (pos) => {
-        setReading({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          accuracy: pos.coords.accuracy,
-          t: pos.timestamp
-        });
-      },
-      (err) => {
-        setStatus({ kind: "error", message: err.message });
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 1000,
-        timeout: 15000,
-        ...opts
-      }
-    );
+    startWatch(true);
 
     return () => {
       if (watchId.current !== null) {

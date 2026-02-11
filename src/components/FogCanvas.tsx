@@ -60,6 +60,8 @@ function drawFog(
     // This handles both GPS jumps and separate runs being drawn together
     if (dist > 50) {
       ctx.moveTo(pt.x, pt.y);
+      // Force a dot for the start of the new segment so isolated points are visible
+      ctx.lineTo(pt.x, pt.y);
     } else {
       ctx.lineTo(pt.x, pt.y);
     }

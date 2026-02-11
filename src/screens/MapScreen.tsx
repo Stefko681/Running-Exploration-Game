@@ -44,7 +44,21 @@ export function MapScreen() {
   const [follow, setFollow] = useState(true);
   const [map, setMap] = useState<LeafletMap | null>(null);
   const runZoom = useSettingsStore((s) => s.runZoom);
-  const { status, reading } = useGeolocation(isRunning, { enableHighAccuracy: true });
+  // Always track location while on the Map screen so we can center on user
+  const { status, reading } = useGeolocation(true, { enableHighAccuracy: true });
+
+  // Update map zoom when user changes the setting
+  useEffect(() => {
+    if (map) {
+      map.setZoom(runZoom);
+      // If we have a user location, center on it when changing zoom presets
+      // This feels more natural ("Show me my run area")
+      if (reading) {
+        map.setView([reading.lat, reading.lng], runZoom);
+        setFollow(true); // Re-enable follow mode if user was looking around
+      }
+    }
+  }, [map, runZoom]); // Intentional: only run when runZoom changes, use latest reading from closure
 
   useEffect(() => {
     if (!reading) return;
@@ -84,7 +98,7 @@ export function MapScreen() {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
-        map.setView([latitude, longitude], 13);
+        map.setView([latitude, longitude], runZoom);
       },
       () => {
         // ignore errors and keep default center (Sofia)
@@ -112,7 +126,7 @@ export function MapScreen() {
     <div className="relative h-full w-full overflow-hidden">
       <MapContainer
         center={SOFIA}
-        zoom={13}
+        zoom={runZoom}
         zoomControl={false}
         className="h-full w-full z-0"
         preferCanvas
