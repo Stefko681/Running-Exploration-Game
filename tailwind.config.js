@@ -4,21 +4,23 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Core app palette – dark / cyberpunk
+        // Core app palette – dynamic themes
         app: {
-          bg: "#020617", // slate-950-ish
-          surface: "#020617",
-          surfaceSoft: "#020617ee",
+          bg: "var(--app-bg)",
+          surface: "var(--app-surface)",
+          // Using rgba with css var for opacity support
+          accent: "var(--app-accent)",
+          accentSoft: "rgba(var(--app-accent-rgb), 0.15)",
+
+          surfaceSoft: "#020617ee", // kept static for now or can start migrating
           border: "#0f172a",
-          accent: "#22d3ee", // cyan-400
-          accentSoft: "#22d3ee26",
           accentAlt: "#a855f7", // violet-500
           danger: "#fb7185", // rose-400
           success: "#4ade80" // green-400
         }
       },
       boxShadow: {
-        glow: "0 0 24px rgba(34, 211, 238, 0.22)"
+        glow: "0 0 24px rgba(var(--app-accent-rgb), 0.22)"
       },
       borderRadius: {
         xl: "0.9rem",

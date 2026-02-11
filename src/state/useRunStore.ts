@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { GPS_MAX_SPEED_M_PER_S, GPS_MIN_STEP_METERS } from "../config";
 import type { LatLngPoint, RunSummary } from "../types";
+import { audio } from "../utils/audio";
 import { haversineMeters } from "../utils/geo";
 import { loadPersisted, savePersisted } from "./storage";
 
@@ -21,15 +22,16 @@ type RunState = {
   acceptPoint: (p: LatLngPoint) => { accepted: boolean; reason?: string };
   setPreviewRun: (id: string | null) => void;
   hydrateFromExport: (data: { revealed: LatLngPoint[]; runs: RunSummary[] }) => void;
+  getLifetimeStats: () => { totalDistance: number; totalRuns: number };
 };
 
 const persisted =
   typeof window !== "undefined"
     ? loadPersisted()
     : {
-        revealed: [],
-        runs: []
-      };
+      revealed: [],
+      runs: []
+    };
 
 export const useRunStore = create<RunState>((set, get) => ({
   isRunning: false,
@@ -40,7 +42,7 @@ export const useRunStore = create<RunState>((set, get) => ({
   lastAccepted: undefined,
   runStartedAt: undefined,
   previewRunId: null,
-  start: () =>
+  start: () => {
     set((s) => ({
       ...s,
       isRunning: true,
@@ -48,8 +50,10 @@ export const useRunStore = create<RunState>((set, get) => ({
       totalRunMeters: 0,
       lastAccepted: undefined,
       runStartedAt: Date.now()
-    })),
-  stop: () =>
+    }));
+    audio.startRun();
+  },
+  stop: () => {
     set((s) => {
       // If we weren't actually running or have too few points, just stop without recording
       if (!s.isRunning || s.currentRun.length < 2 || !s.runStartedAt) {
@@ -85,7 +89,9 @@ export const useRunStore = create<RunState>((set, get) => ({
         totalRunMeters: 0,
         runs
       };
-    }),
+    });
+    audio.stopRun();
+  },
   resetAll: () => {
     const next = {
       isRunning: false,
@@ -139,6 +145,11 @@ export const useRunStore = create<RunState>((set, get) => ({
         totalRunMeters: s.totalRunMeters + d
       };
     });
+    // Play unlock sound occasinally or always? limit to not be annoying?
+    // Let's play it every time a chunk is revealed for now (it's satisfying)
+    // But maybe debounce it if points come too fast?
+    // The GPS interval is usually 1s, so it should be fine.
+    audio.unlock();
     return { accepted: true };
   },
   setPreviewRun: (id) =>
@@ -156,7 +167,10 @@ export const useRunStore = create<RunState>((set, get) => ({
         revealed,
         runs
       };
-    })
+    }),
+  getLifetimeStats: () => {
+    const { runs } = get();
+    const totalDistance = runs.reduce((acc, r) => acc + r.distanceMeters, 0);
+    return { totalDistance, totalRuns: runs.length };
+  }
 }));
-
-

@@ -9,6 +9,7 @@ import { FogCanvas } from "../components/FogCanvas";
 import { IconButton } from "../components/IconButton";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { RunAreaSelector } from "../components/RunAreaSelector";
+import { ThemeSelector } from "../components/ThemeSelector";
 import { StatCard } from "../components/StatCard";
 import { FOG_BRUSH_RADIUS_PX, FOG_OPACITY } from "../config";
 import { useGeolocation } from "../hooks/useGeolocation";
@@ -184,6 +185,7 @@ export function MapScreen() {
               ) : null}
             </div>
             <RunAreaSelector />
+            <ThemeSelector />
           </div>
         </div>
       </div>

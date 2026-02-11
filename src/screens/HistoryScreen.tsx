@@ -1,7 +1,11 @@
 import { useMemo } from "react";
+import { NumberTicker } from "../components/NumberTicker";
 import { useRunStore } from "../state/useRunStore";
 import type { LatLngPoint, RunSummary } from "../types";
 import { formatKm } from "../utils/geo";
+import { getRank } from "../utils/gamification";
+import { ShareCard } from "../components/ShareCard";
+import { useState } from "react";
 
 function formatDurationMs(ms: number): string {
   const totalSec = Math.round(ms / 1000);
@@ -21,35 +25,10 @@ function formatDate(ts: number): string {
   });
 }
 
-function buildShareText(run: RunSummary) {
-  const duration = run.endedAt - run.startedAt;
-  return `Run in City Fog of War: ${formatKm(run.distanceMeters)} km in ${formatDurationMs(
-    duration
-  )}, ${run.points.length} points.`;
-}
 
-function RunItem({ run }: { run: RunSummary }) {
-  const duration = run.endedAt - run.startedAt;
 
-  const handleShare = async () => {
-    const text = buildShareText(run);
-    try {
-      if (navigator.share) {
-        await navigator.share({ text, title: "City Fog of War run" });
-        return;
-      }
-    } catch {
-      // fall through to clipboard
-    }
-    try {
-      await navigator.clipboard.writeText(text);
-      // eslint-disable-next-line no-alert
-      alert("Run summary copied to clipboard.");
-    } catch {
-      // eslint-disable-next-line no-alert
-      alert(text);
-    }
-  };
+function RunItem({ run, onShare }: { run: RunSummary; onShare: (run: RunSummary) => void }) {
+  const duration = run.endedAt - run.startedAt;
 
   return (
     <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-800/80 bg-slate-900/40 px-4 py-3">
@@ -67,12 +46,55 @@ function RunItem({ run }: { run: RunSummary }) {
       <div className="flex flex-none items-center gap-2">
         <button
           type="button"
-          onClick={handleShare}
+          onClick={() => onShare(run)}
           className="rounded-xl bg-slate-900 px-3 py-1.5 text-xs font-semibold text-slate-200 ring-1 ring-slate-700 transition-colors hover:bg-slate-800"
         >
           Share
         </button>
       </div>
+    </div>
+  );
+}
+
+function RankCard() {
+  const getLifetimeStats = useRunStore((s) => s.getLifetimeStats);
+  const { totalDistance } = getLifetimeStats();
+  const rank = getRank(totalDistance);
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/80 p-4 shadow-glow">
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="text-xs font-medium uppercase tracking-wider text-slate-400">
+            Current Rank
+          </div>
+          <div className={`mt-1 flex items-center gap-2 text-2xl font-bold tracking-tight ${rank.current.color}`}>
+            <rank.current.icon className="h-6 w-6" />
+            {rank.current.title}
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-xs text-slate-500">Lifetime Distance</div>
+          <div className="text-lg font-semibold text-slate-200">
+            <NumberTicker value={totalDistance / 1000} /> <span className="text-sm text-slate-500">km</span>
+          </div>
+        </div>
+      </div>
+
+      {rank.next && (
+        <div className="mt-4">
+          <div className="mb-1 flex justify-between text-[10px] font-medium uppercase text-slate-500">
+            <span>Progress to {rank.next.title}</span>
+            <span>{Math.round(rank.remaining / 1000)} km left</span>
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800">
+            <div
+              className={`h-full rounded-full transition-all duration-1000 ${rank.current.color.replace('text-', 'bg-')}`}
+              style={{ width: `${rank.progress}%` }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -132,57 +154,70 @@ export function HistoryScreen() {
     reader.readAsText(file);
   };
 
+  /* ... */
+
+  const [shareRun, setShareRun] = useState<RunSummary | null>(null);
+
   const sortedRuns = useMemo(
     () => [...runs].sort((a, b) => b.startedAt - a.startedAt),
     [runs]
   );
 
-  if (sortedRuns.length === 0) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center px-6 text-center text-sm text-slate-400">
-        <div className="mb-2 text-base font-semibold text-slate-100">
-          No runs yet
-        </div>
-        <p>
-          Start your first run from the map screen to see your history and track your
-          exploration progress here.
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <div className="h-full overflow-y-auto px-3 pb-6 pt-2">
-      <div className="mx-auto flex w-full max-w-md flex-col gap-3">
-        <div className="flex items-center justify-between gap-3 pb-1 pt-2">
-          <div className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-            History
-          </div>
-          <div className="flex items-center gap-2 text-xs">
-            <button
-              type="button"
-              onClick={handleExport}
-              className="rounded-xl bg-slate-900 px-3 py-1.5 font-semibold text-slate-100 ring-1 ring-slate-700 transition-colors hover:bg-slate-800"
-            >
-              Export
-            </button>
-            <label className="cursor-pointer rounded-xl bg-slate-900 px-3 py-1.5 font-semibold text-slate-100 ring-1 ring-slate-700 transition-colors hover:bg-slate-800">
-              Import
-              <input
-                type="file"
-                accept="application/json"
-                className="hidden"
-                onChange={handleImport}
-              />
-            </label>
-          </div>
-        </div>
+    <>
+      {shareRun && (
+        <ShareCard
+          run={shareRun}
+          onClose={() => setShareRun(null)}
+        />
+      )}
 
-        {sortedRuns.map((run) => (
-          <RunItem key={run.id} run={run} />
-        ))}
+      <div className="h-full overflow-y-auto px-3 pb-6 pt-2">
+        <div className="mx-auto flex w-full max-w-md flex-col gap-3">
+          {/* ... Header ... */}
+          <div className="flex items-center justify-between gap-3 pb-1 pt-2">
+            <div className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+              History
+            </div>
+            <div className="flex items-center gap-2 text-xs">
+              <button
+                type="button"
+                onClick={handleExport}
+                className="rounded-xl bg-slate-900 px-3 py-1.5 font-semibold text-slate-100 ring-1 ring-slate-700 transition-colors hover:bg-slate-800"
+              >
+                Export
+              </button>
+              <label className="cursor-pointer rounded-xl bg-slate-900 px-3 py-1.5 font-semibold text-slate-100 ring-1 ring-slate-700 transition-colors hover:bg-slate-800">
+                Import
+                <input
+                  type="file"
+                  accept="application/json"
+                  className="hidden"
+                  onChange={handleImport}
+                />
+              </label>
+            </div>
+          </div>
+
+          <RankCard />
+
+          {sortedRuns.length === 0 ? (
+            <div className="mt-8 flex flex-col items-center justify-center px-6 text-center text-sm text-slate-400">
+              <div className="mb-2 text-base font-semibold text-slate-100">
+                No runs yet
+              </div>
+              <p>
+                Start your first run from the map screen to see your history and track your
+                exploration progress here.
+              </p>
+            </div>
+          ) : (
+            sortedRuns.map((run) => (
+              <RunItem key={run.id} run={run} onShare={setShareRun} />
+            ))
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
-

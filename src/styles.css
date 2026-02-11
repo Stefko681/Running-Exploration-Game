@@ -6,6 +6,25 @@
 @layer base {
   :root {
     color-scheme: dark;
+    --app-bg: #020617;
+    --app-surface: #0f172a;
+    --app-accent: #22d3ee;
+    --app-accent-rgb: 34, 211, 238;
+    /* for opacity magic */
+  }
+
+  :root[data-theme="matrix"] {
+    --app-bg: #000000;
+    --app-surface: #111111;
+    --app-accent: #22c55e;
+    --app-accent-rgb: 34, 197, 94;
+  }
+
+  :root[data-theme="vaporwave"] {
+    --app-bg: #2e022d;
+    --app-surface: #4a044a;
+    --app-accent: #f472b6;
+    --app-accent-rgb: 244, 114, 182;
   }
 
   html,
@@ -15,7 +34,9 @@
   }
 
   body {
-    @apply bg-app-bg text-slate-100 antialiased;
+    background-color: var(--app-bg);
+    color: #f8fafc;
+    transition: background-color 0.5s ease, color 0.5s ease;
   }
 
   /* Improve Leaflet panning on touch and prevent weird selection/dragging */
@@ -24,6 +45,21 @@
     -ms-touch-action: pan-x pan-y;
     user-select: none;
     -webkit-user-select: none;
+    background: var(--app-bg) !important;
+    /* Match map background to theme */
+  }
+
+  /* Map Tile Filtering for Themes */
+  :root[data-theme="cyberpunk"] .leaflet-tile-pane {
+    filter: invert(100%) hue-rotate(180deg) brightness(0.7) contrast(1.2) grayscale(0.2);
+  }
+
+  :root[data-theme="matrix"] .leaflet-tile-pane {
+    filter: invert(100%) sepia(100%) hue-rotate(90deg) brightness(0.8) contrast(1.5);
+  }
+
+  :root[data-theme="vaporwave"] .leaflet-tile-pane {
+    filter: invert(100%) sepia(60%) hue-rotate(190deg) brightness(0.9) contrast(1.1);
   }
 }
 
@@ -80,5 +116,3 @@
     @apply pointer-events-auto mx-auto flex w-full max-w-md items-center justify-between gap-2 rounded-2xl border border-slate-800 bg-slate-950/80 p-2 shadow-glow backdrop-blur;
   }
 }
-
-

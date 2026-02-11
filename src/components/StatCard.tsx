@@ -1,8 +1,10 @@
 import type { ReactNode } from "react";
 
+import { NumberTicker } from "./NumberTicker";
+
 type StatCardProps = {
   label: string;
-  value: ReactNode;
+  value: ReactNode | number;
   align?: "left" | "right";
   accent?: boolean;
 };
@@ -12,11 +14,14 @@ export function StatCard({ label, value, align = "left", accent }: StatCardProps
     <div className="stat-card">
       <div className="stat-card-label">{label}</div>
       <div
-        className={`stat-card-value ${
-          align === "right" ? "text-right" : ""
-        } ${accent ? "text-emerald-300" : ""}`}
+        className={`stat-card-value ${align === "right" ? "text-right" : ""
+          } ${accent ? "text-app-accent" : ""}`}
       >
-        {value}
+        {typeof value === "number" ? (
+          <NumberTicker value={value} />
+        ) : (
+          value
+        )}
       </div>
     </div>
   );

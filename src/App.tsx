@@ -1,12 +1,20 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { OnboardingOverlay } from "./components/OnboardingOverlay";
 import { HistoryScreen } from "./screens/HistoryScreen";
 import { MapScreen } from "./screens/MapScreen";
+import { useThemeStore } from "./state/useThemeStore";
 
 type TabId = "map" | "history";
 
 export default function App() {
   const [tab, setTab] = useState<TabId>("map");
+  const theme = useThemeStore((s) => s.theme);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+  }, [theme]);
+
+  // Prevent flash of wrong theme by setting it early if possible, but useEffect is fine for now
 
   return (
     <>
@@ -17,9 +25,8 @@ export default function App() {
             <button
               type="button"
               onClick={() => setTab("map")}
-              className={`transition-colors ${
-                tab === "map" ? "text-cyan-300" : "hover:text-slate-300"
-              }`}
+              className={`transition-colors ${tab === "map" ? "text-app-accent" : "hover:text-slate-300"
+                }`}
             >
               Map
             </button>
@@ -27,9 +34,8 @@ export default function App() {
             <button
               type="button"
               onClick={() => setTab("history")}
-              className={`transition-colors ${
-                tab === "history" ? "text-cyan-300" : "hover:text-slate-300"
-              }`}
+              className={`transition-colors ${tab === "history" ? "text-app-accent" : "hover:text-slate-300"
+                }`}
             >
               History
             </button>
