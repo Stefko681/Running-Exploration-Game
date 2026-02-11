@@ -82,5 +82,13 @@ export const audio = {
     click: () => {
         // Soft click
         playTone(800, "sine", 0.05, 0.02);
+    },
+
+    levelUp: () => {
+        // Success chord
+        if (!ctx) initAudio();
+        setTimeout(() => playTone(440, "sine", 0.1), 0);
+        setTimeout(() => playTone(554, "sine", 0.1), 100);
+        setTimeout(() => playTone(659, "sine", 0.4), 200);
     }
 };

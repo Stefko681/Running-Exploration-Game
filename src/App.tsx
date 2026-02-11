@@ -2,15 +2,23 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, X } from "lucide-react";
 import { OnboardingOverlay } from "./components/OnboardingOverlay";
 import { InstallPrompt } from "./components/InstallPrompt";
+import { AchievementToast } from "./components/AchievementToast";
 import { HistoryScreen } from "./screens/HistoryScreen";
 import { MapScreen } from "./screens/MapScreen";
+import { ProfileScreen } from "./screens/ProfileScreen";
 import { useRunStore } from "./state/useRunStore";
 import { useThemeStore } from "./state/useThemeStore";
 
-type TabId = "map" | "history";
+import { LandingPage } from "./pages/LandingPage";
+
+type TabId = "map" | "history" | "profile";
 
 export default function App() {
   const [tab, setTab] = useState<TabId>("map");
+  const [showLanding, setShowLanding] = useState(() => {
+    return !localStorage.getItem("fogrun:landingSeen");
+  });
+
   const theme = useThemeStore((s) => s.theme);
   const storageError = useRunStore((s) => s.storageError);
   const dismissStorageError = useRunStore((s) => s.dismissStorageError);
@@ -21,11 +29,18 @@ export default function App() {
 
   // Prevent flash of wrong theme by setting it early if possible, but useEffect is fine for now
 
+  if (showLanding) {
+    return <LandingPage onStart={() => {
+      localStorage.setItem("fogrun:landingSeen", "1");
+      setShowLanding(false);
+    }} />;
+  }
+
   return (
     <>
       <div className="app-shell">
         <header className="app-header">
-          <div className="app-logo">City Fog of War</div>
+          <div className="app-logo">CityQuest</div>
           <div className="flex items-center gap-3 text-[11px] uppercase tracking-[0.16em] text-slate-500">
             <button
               type="button"
@@ -44,10 +59,21 @@ export default function App() {
             >
               History
             </button>
+            <span className="text-slate-700">•</span>
+            <button
+              type="button"
+              onClick={() => setTab("profile")}
+              className={`transition-colors ${tab === "profile" ? "text-app-accent" : "hover:text-slate-300"
+                }`}
+            >
+              Profile
+            </button>
           </div>
         </header>
         <main className="flex-1 min-h-0">
-          {tab === "map" ? <MapScreen /> : <HistoryScreen />}
+          {tab === "map" && <MapScreen />}
+          {tab === "history" && <HistoryScreen />}
+          {tab === "profile" && <ProfileScreen />}
         </main>
       </div>
 
@@ -72,6 +98,7 @@ export default function App() {
 
       <OnboardingOverlay />
       <InstallPrompt />
+      <AchievementToast />
     </>
   );
 }

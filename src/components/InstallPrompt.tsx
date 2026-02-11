@@ -18,7 +18,7 @@ export function InstallPrompt() {
                     <div className="flex-1">
                         <h3 className="text-sm font-bold text-slate-100">Install App</h3>
                         <p className="mt-1 text-xs text-slate-400">
-                            Install City Fog of War for a better fullscreen experience and offline access.
+                            Install CityQuest for a better fullscreen experience and offline access.
                         </p>
                         <div className="mt-3 flex gap-3">
                             <button

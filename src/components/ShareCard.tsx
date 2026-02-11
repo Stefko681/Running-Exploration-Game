@@ -92,7 +92,7 @@ export function ShareCard({ run, mode, onClose }: ShareCardProps) {
             });
 
             const blob = await (await fetch(dataUrl)).blob();
-            const filename = mode === 'total' ? "city-fog-conquest.png" : "city-fog-run.png";
+            const filename = mode === 'total' ? "city-quest-conquest.png" : "city-quest-run.png";
             const file = new File([blob], filename, { type: "image/png" });
             const title = mode === 'total' ? "My City Conquest" : "My Run";
             const text = mode === 'total'
@@ -181,7 +181,7 @@ export function ShareCard({ run, mode, onClose }: ShareCardProps) {
                         {/* Logo/Branding */}
                         <div className="text-center">
                             <h2 className="text-2xl font-black uppercase tracking-tighter italic text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400 drop-shadow-lg font-outline-2">
-                                {mode === 'total' ? 'City Conquest' : 'City Fog of War'}
+                                {mode === 'total' ? 'City Conquest' : 'CityQuest'}
                             </h2>
                         </div>
 

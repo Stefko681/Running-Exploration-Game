@@ -1,4 +1,5 @@
 import type { LatLngPoint, RunSummary } from "../types";
+import type { SupplyDrop } from "../utils/supplyDrops";
 
 const KEY = "fogrun:v2";
 
@@ -7,13 +8,19 @@ export type PersistedState = {
   runs: RunSummary[];
   currentStreak?: number;
   lastRunDate?: number | null;
+  achievements?: string[];
+  supplyDrops?: SupplyDrop[];
+  lastDropGenerationDate?: number | null;
 };
 
 const EMPTY_STATE: PersistedState = {
   revealed: [],
   runs: [],
   currentStreak: 0,
-  lastRunDate: null
+  lastRunDate: null,
+  achievements: [],
+  supplyDrops: [],
+  lastDropGenerationDate: null
 };
 
 export function loadPersisted(): PersistedState {
@@ -26,7 +33,10 @@ export function loadPersisted(): PersistedState {
       revealed: Array.isArray(parsed.revealed) ? (parsed.revealed as LatLngPoint[]) : [],
       runs: Array.isArray(parsed.runs) ? (parsed.runs as RunSummary[]) : [],
       currentStreak: typeof parsed.currentStreak === 'number' ? parsed.currentStreak : 0,
-      lastRunDate: typeof parsed.lastRunDate === 'number' ? parsed.lastRunDate : null
+      lastRunDate: typeof parsed.lastRunDate === 'number' ? parsed.lastRunDate : null,
+      achievements: Array.isArray(parsed.achievements) ? (parsed.achievements as string[]) : [],
+      supplyDrops: Array.isArray(parsed.supplyDrops) ? (parsed.supplyDrops as SupplyDrop[]) : [],
+      lastDropGenerationDate: typeof parsed.lastDropGenerationDate === 'number' ? parsed.lastDropGenerationDate : null
     };
   } catch {
     return EMPTY_STATE;

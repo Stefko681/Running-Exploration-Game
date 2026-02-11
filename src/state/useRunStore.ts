@@ -1,8 +1,11 @@
+
 import { create } from "zustand";
 import { GPS_MAX_SPEED_M_PER_S, GPS_MIN_STEP_METERS } from "../config";
 import type { LatLngPoint, RunSummary } from "../types";
 import { audio } from "../utils/audio";
 import { haversineMeters } from "../utils/geo";
+import { checkNewAchievements } from "../utils/achievements";
+import { generateDailyDrops, checkDropCollection, type SupplyDrop } from "../utils/supplyDrops";
 import { loadPersisted, savePersisted } from "./storage";
 
 type RunState = {
@@ -22,6 +25,11 @@ type RunState = {
   // Gamification
   currentStreak: number;
   lastRunDate: number | null; // Epoch ms of the last completed run
+  achievements: string[]; // IDs of unlocked achievements
+
+  // Supply Drops
+  supplyDrops: SupplyDrop[];
+  lastDropGenerationDate: number | null;
 
   start: () => void;
   stop: () => void;
@@ -40,7 +48,10 @@ const persisted =
       revealed: [],
       runs: [],
       currentStreak: 0,
-      lastRunDate: null
+      lastRunDate: null,
+      achievements: [],
+      supplyDrops: [],
+      lastDropGenerationDate: null
     };
 
 // Throttling mechanism for persistence
@@ -65,7 +76,10 @@ function performSave() {
     revealed: state.revealed,
     runs: state.runs,
     currentStreak: state.currentStreak,
-    lastRunDate: state.lastRunDate
+    lastRunDate: state.lastRunDate,
+    achievements: state.achievements,
+    supplyDrops: state.supplyDrops,
+    lastDropGenerationDate: state.lastDropGenerationDate
   });
   if (!result.success && result.error) {
     useRunStore.setState({ storageError: result.error });
@@ -120,18 +134,42 @@ export const useRunStore = create<RunState>((set, get) => ({
   storageError: undefined,
   currentStreak: persisted.currentStreak ?? 0,
   lastRunDate: persisted.lastRunDate ?? null,
+  achievements: persisted.achievements ?? [],
+  supplyDrops: persisted.supplyDrops ?? [],
+  lastDropGenerationDate: persisted.lastDropGenerationDate ?? null,
 
   start: () => {
+    const now = Date.now();
+
+    // Check if we need to generate new drops (once per day)
+    const lastGen = get().lastDropGenerationDate;
+    let currentDrops = get().supplyDrops;
+
+    // Simple day check
+    const needsNewDrops = !lastGen || new Date(lastGen).getDate() !== new Date(now).getDate();
+
+    if (needsNewDrops) {
+      // Try to use last known location or default
+      const lastKnown = get().runs.at(-1)?.points.at(-1) || { lat: 42.6977, lng: 23.3219, t: now };
+      currentDrops = generateDailyDrops(lastKnown); // Generate 3
+    } else {
+      // Filter expired
+      currentDrops = currentDrops.filter(d => d.expiresAt > now);
+    }
+
     set((s) => ({
       ...s,
       isRunning: true,
       currentRun: [],
       totalRunMeters: 0,
       lastAccepted: undefined,
-      runStartedAt: Date.now()
+      runStartedAt: now,
+      supplyDrops: currentDrops,
+      lastDropGenerationDate: needsNewDrops ? now : s.lastDropGenerationDate
     }));
     audio.startRun();
   },
+
   stop: () => {
     set((s) => {
       // If we weren't actually running or have too few points, just stop without recording
@@ -177,6 +215,22 @@ export const useRunStore = create<RunState>((set, get) => ({
         }
       }
 
+      // Check for new achievements
+      const totalDistance = runs.reduce((acc, r) => acc + r.distanceMeters, 0);
+      const totalRevealed = s.revealed.length; // Approximation
+
+      const newUnlocked = checkNewAchievements(s.achievements, {
+        totalDistance,
+        totalRuns: runs.length,
+        totalRevealed,
+        currentStreak: streak,
+        lastRun: summary
+      });
+
+      if (newUnlocked.length > 0) {
+        audio.levelUp();
+      }
+
       return {
         ...s,
         isRunning: false,
@@ -186,13 +240,15 @@ export const useRunStore = create<RunState>((set, get) => ({
         totalRunMeters: 0,
         runs,
         currentStreak: streak,
-        lastRunDate: now
+        lastRunDate: now,
+        achievements: [...s.achievements, ...newUnlocked]
       };
     });
     // Force immediate save on stop
     performSave();
     audio.stopRun();
   },
+
   resetAll: () => {
     const next = {
       isRunning: false,
@@ -205,12 +261,16 @@ export const useRunStore = create<RunState>((set, get) => ({
       previewRunId: null,
       storageError: undefined,
       currentStreak: 0,
-      lastRunDate: null
+      lastRunDate: null,
+      achievements: [],
+      supplyDrops: [],
+      lastDropGenerationDate: null
     };
     set(next);
     // Force immediate save
     performSave();
   },
+
   acceptPoint: (p) => {
     const { lastAccepted, isRunning } = get();
     if (!isRunning) return { accepted: false, reason: "not_running" };
@@ -239,12 +299,31 @@ export const useRunStore = create<RunState>((set, get) => ({
     set((s) => {
       const nextRun = [...s.currentRun, p];
       const revealed = [...s.revealed, p];
+
+      // Check supply drops
+      let drops = s.supplyDrops;
+      let dropCollected = false;
+
+      const updatedDrops = drops.map(d => {
+        if (!d.collected && checkDropCollection(p, d)) {
+          dropCollected = true;
+          return { ...d, collected: true };
+        }
+        return d;
+      });
+
+      if (dropCollected) {
+        audio.levelUp(); // Reuse sound for now
+        // TODO: Add specific XP event
+      }
+
       return {
         ...s,
         lastAccepted: p,
         currentRun: nextRun,
         revealed,
-        totalRunMeters: s.totalRunMeters + d
+        totalRunMeters: s.totalRunMeters + d,
+        supplyDrops: updatedDrops
       };
     });
 
@@ -252,11 +331,13 @@ export const useRunStore = create<RunState>((set, get) => ({
     audio.unlock();
     return { accepted: true };
   },
+
   setPreviewRun: (id) =>
     set((s) => ({
       ...s,
       previewRunId: id
     })),
+
   hydrateFromExport: (data) => {
     set((s) => ({
       ...s,
@@ -265,10 +346,12 @@ export const useRunStore = create<RunState>((set, get) => ({
     }));
     performSave();
   },
+
   getLifetimeStats: () => {
     const { runs } = get();
     const totalDistance = runs.reduce((acc, r) => acc + r.distanceMeters, 0);
     return { totalDistance, totalRuns: runs.length };
   },
+
   dismissStorageError: () => set({ storageError: undefined })
 }));

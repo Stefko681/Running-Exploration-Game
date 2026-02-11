@@ -1,9 +1,11 @@
+
 import "leaflet/dist/leaflet.css";
 
 import type { Map as LeafletMap } from "leaflet";
-import { LocateFixed, RotateCcw, Square, Play, Flame, Share2 } from "lucide-react";
+import { DivIcon } from "leaflet";
+import { LocateFixed, RotateCcw, Square, Play, Flame, Share2, Radio, Package, Activity, Gauge } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { MapContainer, Polyline, TileLayer, useMap } from "react-leaflet";
+import { MapContainer, Polyline, TileLayer, useMap, Marker, Popup } from "react-leaflet";
 import { BottomSheet } from "../components/BottomSheet";
 import { FogCanvas } from "../components/FogCanvas";
 import { IconButton } from "../components/IconButton";
@@ -40,7 +42,8 @@ export function MapScreen() {
     revealed,
     totalRunMeters,
     acceptPoint,
-    currentStreak
+    currentStreak,
+    supplyDrops
   } = useRunStore();
 
   const [follow, setFollow] = useState(true);
@@ -64,7 +67,6 @@ export function MapScreen() {
   }, [reading?.lat, reading?.lng, reading?.t]);
 
   // On first load, try to center the map on the user's current location explicitly.
-  // This ensures the permission prompt triggers reliably on mount.
   useEffect(() => {
     if (!map) return;
     if (!("geolocation" in navigator)) return;
@@ -123,6 +125,22 @@ export function MapScreen() {
     }
   };
 
+  // Custom Icon for Supply Drops
+  const dropIcon = new DivIcon({
+    className: 'bg-transparent',
+    html: `<div class="relative flex items-center justify-center w-8 h-8">
+             <div class="absolute inset-0 bg-amber-500 rounded-full animate-ping opacity-75"></div>
+             <div class="relative z-10 w-8 h-8 bg-amber-600 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white">
+               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 9.4 7.55 4.24"/></svg>
+             </div>
+           </div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16]
+  });
+
+  const speedKmh = reading?.speed ? (reading.speed * 3.6).toFixed(1) : "0.0";
+  const altitude = reading?.altitude ? Math.round(reading.altitude) : "---";
+
   return (
     <div className="relative h-full w-full overflow-hidden">
       {showShare && (
@@ -159,6 +177,21 @@ export function MapScreen() {
         ) : null}
 
         {follow ? <RecenterOnUser point={reading ? { lat: reading.lat, lng: reading.lng, t: reading.t } : null} /> : null}
+
+        {/* Supply Drops */}
+        {supplyDrops.map((drop) => {
+          if (drop.collected) return null;
+          return (
+            <Marker key={drop.id} position={[drop.lat, drop.lng]} icon={dropIcon}>
+              <Popup className="text-slate-900 font-bold">
+                <div className="flex items-center gap-2">
+                  <Package size={16} className="text-amber-600" />
+                  <span>Supply Drop Signal</span>
+                </div>
+              </Popup>
+            </Marker>
+          );
+        })}
       </MapContainer>
 
       {/* HUD */}
@@ -201,6 +234,39 @@ export function MapScreen() {
             </div>
             <RunAreaSelector />
             <ThemeSelector />
+          </div>
+
+          {/* Immersive HUD (Sci-Fi Overlay) */}
+          <div className="grid grid-cols-3 gap-2 px-2 animate-in slide-in-from-bottom-4 duration-700 delay-150">
+            {/* Speed */}
+            <div className="flex flex-col items-center justify-center rounded-xl border border-cyan-500/20 bg-slate-900/60 p-2 backdrop-blur-md">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 mb-1 flex items-center gap-1">
+                <Gauge size={10} /> SPD
+              </div>
+              <div className="text-xl font-black text-white lining-nums tabular-nums">
+                {speedKmh}<span className="text-[10px] ml-0.5 text-slate-400 font-normal">km/h</span>
+              </div>
+            </div>
+
+            {/* Signal / Nearest Drop */}
+            <div className="flex flex-col items-center justify-center rounded-xl border border-amber-500/20 bg-slate-900/60 p-2 backdrop-blur-md">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400 mb-1 flex items-center gap-1">
+                <Radio size={10} /> SIG
+              </div>
+              <div className="text-xl font-black text-white lining-nums tabular-nums">
+                {supplyDrops.filter(d => !d.collected).length}<span className="text-[10px] ml-0.5 text-slate-400 font-normal">active</span>
+              </div>
+            </div>
+
+            {/* Altitude */}
+            <div className="flex flex-col items-center justify-center rounded-xl border border-emerald-500/20 bg-slate-900/60 p-2 backdrop-blur-md">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mb-1 flex items-center gap-1">
+                <Activity size={10} /> ALT
+              </div>
+              <div className="text-xl font-black text-white lining-nums tabular-nums">
+                {altitude}<span className="text-[10px] ml-0.5 text-slate-400 font-normal">m</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

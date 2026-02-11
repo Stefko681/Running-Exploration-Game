@@ -10,6 +10,8 @@ export type GeoReading = {
   lng: number;
   accuracy?: number;
   t: number;
+  speed?: number | null;
+  altitude?: number | null;
 };
 
 export function useGeolocation(enabled: boolean, opts?: PositionOptions) {
@@ -46,7 +48,9 @@ export function useGeolocation(enabled: boolean, opts?: PositionOptions) {
             lat: pos.coords.latitude,
             lng: pos.coords.longitude,
             accuracy: pos.coords.accuracy,
-            t: pos.timestamp
+            t: pos.timestamp,
+            speed: pos.coords.speed,
+            altitude: pos.coords.altitude
           });
           setStatus({ kind: "watching" });
         },
@@ -55,6 +59,9 @@ export function useGeolocation(enabled: boolean, opts?: PositionOptions) {
           // Retry with low accuracy if high accuracy fails (timeout or unavailable)
           if (highAccuracy && (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE)) {
             console.log("Falling back to low accuracy geolocation...");
+            // Try extremely permissive settings for fallback
+            // Infinity maxAge allows getting a cached position from ANY time in the past
+            // Increased timeout to give the device maximum time to wake up wifi/cell location
             startWatch(false);
             return;
           }
@@ -69,8 +76,9 @@ export function useGeolocation(enabled: boolean, opts?: PositionOptions) {
         },
         {
           enableHighAccuracy: highAccuracy,
-          maximumAge: 10000,
-          timeout: 20000,
+          // If falling back to low accuracy (highAccuracy is false), match almost anything cached
+          maximumAge: highAccuracy ? 10000 : Infinity,
+          timeout: highAccuracy ? 20000 : 60000,
           ...opts
         }
       );
