@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useMap } from "react-leaflet";
+import { haversineMeters } from "../utils/geo";
 import type { LatLngPoint } from "../types";
 
 type FogCanvasProps = {
@@ -28,7 +29,7 @@ function drawFog(
   ctx.fillStyle = `rgba(0,0,0,${fogOpacity})`;
   ctx.fillRect(0, 0, w, h);
 
-  if (revealed.length < 2) return;
+  if (revealed.length < 1) return;
 
   // Clear revealed path
   ctx.globalCompositeOperation = "destination-out";
@@ -38,11 +39,30 @@ function drawFog(
   ctx.strokeStyle = "rgba(0,0,0,1)";
 
   ctx.beginPath();
-  for (let i = 0; i < revealed.length; i++) {
-    const p = revealed[i]!;
-    const pt = map.latLngToContainerPoint([p.lat, p.lng]);
-    if (i === 0) ctx.moveTo(pt.x, pt.y);
-    else ctx.lineTo(pt.x, pt.y);
+
+  // We need to handle the first point
+  if (revealed.length > 0) {
+    const first = revealed[0];
+    const pt = map.latLngToContainerPoint([first.lat, first.lng]);
+    ctx.moveTo(pt.x, pt.y);
+    // Draw a dot for the single point case
+    ctx.lineTo(pt.x, pt.y);
+  }
+
+  for (let i = 1; i < revealed.length; i++) {
+    const p1 = revealed[i - 1];
+    const p2 = revealed[i];
+
+    const dist = haversineMeters(p1, p2);
+    const pt = map.latLngToContainerPoint([p2.lat, p2.lng]);
+
+    // If points are far apart (e.g. > 50m), start a new path segment
+    // This handles both GPS jumps and separate runs being drawn together
+    if (dist > 50) {
+      ctx.moveTo(pt.x, pt.y);
+    } else {
+      ctx.lineTo(pt.x, pt.y);
+    }
   }
   ctx.stroke();
 }

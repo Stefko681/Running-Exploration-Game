@@ -116,7 +116,7 @@ export function MapScreen() {
         zoomControl={false}
         className="h-full w-full z-0"
         preferCanvas
-        whenCreated={setMap}
+        ref={setMap}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
@@ -157,9 +157,8 @@ export function MapScreen() {
               />
             </div>
             <div
-              className={`mt-2 text-xs ${
-                isError ? "text-rose-300" : "text-slate-400"
-              }`}
+              className={`mt-2 text-xs ${isError ? "text-rose-300" : "text-slate-400"
+                }`}
             >
               {statusText}
               {isError ? (
