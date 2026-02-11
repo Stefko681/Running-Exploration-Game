@@ -10,6 +10,7 @@ export type GeoReading = {
   lng: number;
   accuracy?: number;
   t: number;
+  heading?: number | null;
   speed?: number | null;
   altitude?: number | null;
 };
@@ -49,6 +50,7 @@ export function useGeolocation(enabled: boolean, opts?: PositionOptions) {
             lng: pos.coords.longitude,
             accuracy: pos.coords.accuracy,
             t: pos.timestamp,
+            heading: pos.coords.heading,
             speed: pos.coords.speed,
             altitude: pos.coords.altitude
           });

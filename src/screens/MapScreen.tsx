@@ -3,7 +3,7 @@ import "leaflet/dist/leaflet.css";
 
 import type { Map as LeafletMap } from "leaflet";
 import { DivIcon } from "leaflet";
-import { LocateFixed, RotateCcw, Square, Play, Flame, Share2, Radio, Package, Activity, Gauge } from "lucide-react";
+import { LocateFixed, RotateCcw, Square, Play, Flame, Share2, Radio, Package, Activity, Gauge, Navigation } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { MapContainer, Polyline, TileLayer, useMap, Marker, Popup } from "react-leaflet";
 import { BottomSheet } from "../components/BottomSheet";
@@ -19,7 +19,7 @@ import { useGeolocation } from "../hooks/useGeolocation";
 import { useRunStore } from "../state/useRunStore";
 import { useSettingsStore } from "../state/useSettingsStore";
 import type { LatLngPoint } from "../types";
-import { cellKey, formatKm } from "../utils/geo";
+import { cellKey, formatKm, haversineMeters } from "../utils/geo";
 
 const SOFIA: [number, number] = [42.6977, 23.3219];
 
@@ -141,6 +141,39 @@ export function MapScreen() {
   const speedKmh = reading?.speed ? (reading.speed * 3.6).toFixed(1) : "0.0";
   const altitude = reading?.altitude ? Math.round(reading.altitude) : "---";
 
+  // Calculate nearest drop distance and bearing
+  const nearestDropInfo = useMemo(() => {
+    if (!reading || supplyDrops.length === 0) return null;
+    const userPos = { lat: reading.lat, lng: reading.lng, t: reading.t };
+
+    let minDist = Infinity;
+    let nearest = null;
+
+    for (const drop of supplyDrops) {
+      if (drop.collected) continue;
+      const d = haversineMeters(userPos, { lat: drop.lat, lng: drop.lng, t: 0 });
+      if (d < minDist) {
+        minDist = d;
+        nearest = drop;
+      }
+    }
+
+    if (!nearest) return null;
+
+    // Calculate bearing (initial bearing)
+    const y = Math.sin(nearest.lng - userPos.lng) * Math.cos(nearest.lat);
+    const x = Math.cos(userPos.lat) * Math.sin(nearest.lat) -
+      Math.sin(userPos.lat) * Math.cos(nearest.lat) * Math.cos(nearest.lng - userPos.lng);
+    const θ = Math.atan2(y, x);
+    const bearing = (θ * 180 / Math.PI + 360) % 360; // 0-360 degrees
+
+    return { distance: minDist, bearing };
+  }, [reading, supplyDrops]);
+
+  // User heading (from GPS or device orientation could go here, for now assume 0 or use course if available)
+  const userHeading = reading?.heading || 0;
+  const relativeBearing = nearestDropInfo ? (nearestDropInfo.bearing - userHeading) : 0;
+
   return (
     <div className="relative h-full w-full overflow-hidden">
       {showShare && (
@@ -249,13 +282,30 @@ export function MapScreen() {
             </div>
 
             {/* Signal / Nearest Drop */}
-            <div className="flex flex-col items-center justify-center rounded-xl border border-amber-500/20 bg-slate-900/60 p-2 backdrop-blur-md">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400 mb-1 flex items-center gap-1">
-                <Radio size={10} /> SIG
-              </div>
-              <div className="text-xl font-black text-white lining-nums tabular-nums">
-                {supplyDrops.filter(d => !d.collected).length}<span className="text-[10px] ml-0.5 text-slate-400 font-normal">active</span>
-              </div>
+            <div className="flex flex-col items-center justify-center rounded-xl border border-amber-500/20 bg-slate-900/60 p-2 backdrop-blur-md relative overflow-hidden">
+              {nearestDropInfo ? (
+                <>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400 mb-1 flex items-center gap-1 z-10">
+                    <Navigation size={10} style={{ transform: `rotate(${relativeBearing}deg)` }} className="transition-transform duration-500" /> TARGET
+                  </div>
+                  <div className="text-xl font-black text-white lining-nums tabular-nums z-10">
+                    {Math.round(nearestDropInfo.distance)}<span className="text-[10px] ml-0.5 text-slate-400 font-normal">m</span>
+                  </div>
+                  {/* Pulse effect if close */}
+                  {nearestDropInfo.distance < 100 && (
+                    <div className="absolute inset-0 bg-amber-500/10 animate-pulse z-0" />
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1 flex items-center gap-1">
+                    <Radio size={10} /> SIG
+                  </div>
+                  <div className="text-md font-bold text-slate-400">
+                    NO SIGNAL
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Altitude */}

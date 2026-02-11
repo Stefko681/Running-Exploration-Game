@@ -6,12 +6,13 @@ import { AchievementToast } from "./components/AchievementToast";
 import { HistoryScreen } from "./screens/HistoryScreen";
 import { MapScreen } from "./screens/MapScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
+import { LeaderboardScreen } from "./screens/LeaderboardScreen";
 import { useRunStore } from "./state/useRunStore";
 import { useThemeStore } from "./state/useThemeStore";
 
 import { LandingPage } from "./pages/LandingPage";
 
-type TabId = "map" | "history" | "profile";
+type TabId = "map" | "history" | "profile" | "leaderboard";
 
 export default function App() {
   const [tab, setTab] = useState<TabId>("map");
@@ -68,12 +69,22 @@ export default function App() {
             >
               Profile
             </button>
+            <span className="text-slate-700">•</span>
+            <button
+              type="button"
+              onClick={() => setTab("leaderboard")}
+              className={`transition-colors ${tab === "leaderboard" ? "text-cyan-400 font-bold" : "hover:text-cyan-200 text-cyan-500/80"
+                }`}
+            >
+              Rankings
+            </button>
           </div>
         </header>
         <main className="flex-1 min-h-0">
           {tab === "map" && <MapScreen />}
           {tab === "history" && <HistoryScreen />}
           {tab === "profile" && <ProfileScreen />}
+          {tab === "leaderboard" && <LeaderboardScreen />}
         </main>
       </div>
 
