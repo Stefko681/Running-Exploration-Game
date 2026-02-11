@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRunStore } from "../state/useRunStore";
 import { ACHIEVEMENTS } from "../utils/achievements";
-import { Trophy, X } from "lucide-react";
+import { X } from "lucide-react";
 
 export function AchievementToast() {
     const achievements = useRunStore((s) => s.achievements);

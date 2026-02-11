@@ -17,7 +17,6 @@ export function ProfileScreen() {
     // Derived stats
     const totalRuns = runs.length;
     const exploredCount = (() => {
-        const s = new Set<string>();
         // Simple approximation for now, or use the store's revealed length if unique cells aren't tracked yet
         return revealed.length;
     })();
@@ -99,8 +98,8 @@ export function ProfileScreen() {
                             <div
                                 key={achievement.id}
                                 className={`group relative overflow-hidden rounded-xl border p-4 transition-all ${isUnlocked
-                                        ? "border-cyan-500/30 bg-cyan-950/20"
-                                        : "border-white/5 bg-slate-900/20 opacity-60"
+                                    ? "border-cyan-500/30 bg-cyan-950/20"
+                                    : "border-white/5 bg-slate-900/20 opacity-60"
                                     }`}
                             >
                                 <div className="flex items-center gap-4">

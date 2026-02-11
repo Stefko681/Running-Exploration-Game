@@ -1,6 +1,6 @@
 
 import { LucideIcon, Footprints, Moon, Sun, Flame, Map, Medal } from "lucide-react";
-import type { RunSummary, LatLngPoint } from "../types";
+import type { RunSummary } from "../types";
 
 export type Achievement = {
     id: string;
