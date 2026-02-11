@@ -1,0 +1,18 @@
+{
+  "name": "City Fog of War – Running Exploration",
+  "short_name": "City Fog of War",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#020617",
+  "theme_color": "#030712",
+  "icons": [
+    {
+      "src": "/pwa.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
+
