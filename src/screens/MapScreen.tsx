@@ -1,7 +1,7 @@
 import "leaflet/dist/leaflet.css";
 
 import type { Map as LeafletMap } from "leaflet";
-import { LocateFixed, RotateCcw, Square, Play } from "lucide-react";
+import { LocateFixed, RotateCcw, Square, Play, Flame, Share2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { MapContainer, Polyline, TileLayer, useMap } from "react-leaflet";
 import { BottomSheet } from "../components/BottomSheet";
@@ -11,6 +11,7 @@ import { PrimaryButton } from "../components/PrimaryButton";
 import { RunAreaSelector } from "../components/RunAreaSelector";
 import { ThemeSelector } from "../components/ThemeSelector";
 import { StatCard } from "../components/StatCard";
+import { ShareCard } from "../components/ShareCard";
 import { FOG_BRUSH_RADIUS_PX, FOG_OPACITY } from "../config";
 import { useGeolocation } from "../hooks/useGeolocation";
 import { useRunStore } from "../state/useRunStore";
@@ -24,7 +25,6 @@ function RecenterOnUser({ point }: { point: LatLngPoint | null }) {
   const map = useMap();
   useEffect(() => {
     if (!point) return;
-    // Keep it gentle; don't fight the user's manual panning
     map.panTo([point.lat, point.lng], { animate: true });
   }, [map, point?.lat, point?.lng]);
   return null;
@@ -39,32 +39,52 @@ export function MapScreen() {
     currentRun,
     revealed,
     totalRunMeters,
-    acceptPoint
+    acceptPoint,
+    currentStreak
   } = useRunStore();
 
   const [follow, setFollow] = useState(true);
   const [map, setMap] = useState<LeafletMap | null>(null);
+  const [showShare, setShowShare] = useState(false);
   const runZoom = useSettingsStore((s) => s.runZoom);
-  // Always track location while on the Map screen so we can center on user
+
+  // Always track location while on the Map screen
   const { status, reading } = useGeolocation(true, { enableHighAccuracy: true });
 
   // Update map zoom when user changes the setting
   useEffect(() => {
     if (map) {
       map.setZoom(runZoom);
-      // If we have a user location, center on it when changing zoom presets
-      // This feels more natural ("Show me my run area")
-      if (reading) {
-        map.setView([reading.lat, reading.lng], runZoom);
-        setFollow(true); // Re-enable follow mode if user was looking around
-      }
     }
-  }, [map, runZoom]); // Intentional: only run when runZoom changes, use latest reading from closure
+  }, [map, runZoom]);
 
   useEffect(() => {
     if (!reading) return;
     acceptPoint({ lat: reading.lat, lng: reading.lng, t: reading.t });
   }, [reading?.lat, reading?.lng, reading?.t]);
+
+  // On first load, try to center the map on the user's current location explicitly.
+  // This ensures the permission prompt triggers reliably on mount.
+  useEffect(() => {
+    if (!map) return;
+    if (!("geolocation" in navigator)) return;
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        map.setView([latitude, longitude], runZoom);
+      },
+      () => {
+        // ignore errors and keep default center (Sofia)
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 10000
+      }
+    );
+  }, [map]);
+
 
   const explorationScore = useMemo(() => {
     const s = new Set<string>();
@@ -91,32 +111,12 @@ export function MapScreen() {
       : "n/a";
   const isError = status.kind === "error";
 
-  // On first load, try to center the map on the user's current location.
-  useEffect(() => {
-    if (!map) return;
-    if (!("geolocation" in navigator)) return;
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        map.setView([latitude, longitude], runZoom);
-      },
-      () => {
-        // ignore errors and keep default center (Sofia)
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 10000
-      }
-    );
-  }, [map]);
-
   const handleStartRun = () => {
     start();
     if (map) {
       if (reading) {
         map.setView([reading.lat, reading.lng], runZoom);
+        setFollow(true);
       } else {
         map.setZoom(runZoom);
       }
@@ -125,6 +125,13 @@ export function MapScreen() {
 
   return (
     <div className="relative h-full w-full overflow-hidden">
+      {showShare && (
+        <ShareCard
+          mode="total"
+          onClose={() => setShowShare(false)}
+        />
+      )}
+
       <MapContainer
         center={SOFIA}
         zoom={runZoom}
@@ -159,7 +166,15 @@ export function MapScreen() {
         <div className="pointer-events-auto mx-auto flex w-full max-w-md flex-col gap-2">
           <div className="glass-panel px-4 py-3">
             <div className="mb-2 flex items-center justify-between text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500">
-              <span>{runStateLabel}</span>
+              <div className="flex items-center gap-3">
+                <span>{runStateLabel}</span>
+                {currentStreak > 0 && (
+                  <div className="flex items-center gap-1 rounded-full bg-orange-950/30 px-1.5 py-0.5 text-[10px] font-bold text-orange-400 ring-1 ring-orange-500/20 backdrop-blur-sm animate-in fade-in zoom-in">
+                    <Flame className="h-3 w-3 fill-orange-500" />
+                    <span>{currentStreak} DAY STREAK</span>
+                  </div>
+                )}
+              </div>
               <span className="text-slate-600">GPS • {accuracyLabel}</span>
             </div>
             <div className="flex items-center justify-between gap-4">
@@ -192,12 +207,19 @@ export function MapScreen() {
 
       {/* Controls */}
       <BottomSheet>
-        <IconButton
-          active={follow}
-          icon={<LocateFixed className="h-4 w-4" />}
-          onClick={() => setFollow((v) => !v)}
-          title="Toggle follow"
-        />
+        <div className="flex items-center gap-2">
+          <IconButton
+            active={follow}
+            icon={<LocateFixed className="h-4 w-4" />}
+            onClick={() => setFollow((v) => !v)}
+            title="Toggle follow"
+          />
+          <IconButton
+            onClick={() => setShowShare(true)}
+            icon={<Share2 className="h-4 w-4" />}
+            title="Share Conquest"
+          />
+        </div>
 
         <div className="flex flex-1 items-center justify-end gap-2">
           {isRunning ? (

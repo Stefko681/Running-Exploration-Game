@@ -168,6 +168,7 @@ export function HistoryScreen() {
       {shareRun && (
         <ShareCard
           run={shareRun}
+          mode="single"
           onClose={() => setShareRun(null)}
         />
       )}

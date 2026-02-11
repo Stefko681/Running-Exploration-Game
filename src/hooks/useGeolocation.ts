@@ -34,6 +34,12 @@ export function useGeolocation(enabled: boolean, opts?: PositionOptions) {
 
     // Helper to start watching
     const startWatch = (highAccuracy: boolean) => {
+      // Clear existing watch if any
+      if (watchId.current !== null) {
+        navigator.geolocation.clearWatch(watchId.current);
+        watchId.current = null;
+      }
+
       watchId.current = navigator.geolocation.watchPosition(
         (pos) => {
           setReading({
@@ -42,25 +48,29 @@ export function useGeolocation(enabled: boolean, opts?: PositionOptions) {
             accuracy: pos.coords.accuracy,
             t: pos.timestamp
           });
-          // If we recovered from an error, clear it
           setStatus({ kind: "watching" });
         },
         (err) => {
-          // If high accuracy failed, try low accuracy
-          if (highAccuracy) {
-            console.warn("High accuracy GPS failed, falling back to low accuracy...", err);
-            if (watchId.current !== null) {
-              navigator.geolocation.clearWatch(watchId.current);
-            }
+          console.warn("Geolocation error:", err);
+          // Retry with low accuracy if high accuracy fails (timeout or unavailable)
+          if (highAccuracy && (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE)) {
+            console.log("Falling back to low accuracy geolocation...");
             startWatch(false);
-          } else {
-            setStatus({ kind: "error", message: err.message || "Unknown error acquiring position" });
+            return;
           }
+
+          let msg = err.message || "Unknown error acquiring position";
+          if (err.code === err.PERMISSION_DENIED) {
+            msg = "Location permission denied. Please enable it in browser settings.";
+          } else if (err.code === err.POSITION_UNAVAILABLE) {
+            msg = "Location unavailable. GPS signal lost or weak.";
+          }
+          setStatus({ kind: "error", message: msg });
         },
         {
           enableHighAccuracy: highAccuracy,
-          maximumAge: 1000,
-          timeout: 15000,
+          maximumAge: 10000,
+          timeout: 20000,
           ...opts
         }
       );
@@ -79,4 +89,3 @@ export function useGeolocation(enabled: boolean, opts?: PositionOptions) {
 
   return { status, reading };
 }
-

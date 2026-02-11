@@ -9,7 +9,7 @@ export default {
           bg: "var(--app-bg)",
           surface: "var(--app-surface)",
           // Using rgba with css var for opacity support
-          accent: "var(--app-accent)",
+          accent: "rgba(var(--app-accent-rgb), <alpha-value>)",
           accentSoft: "rgba(var(--app-accent-rgb), 0.15)",
 
           surfaceSoft: "#020617ee", // kept static for now or can start migrating

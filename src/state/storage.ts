@@ -5,11 +5,15 @@ const KEY = "fogrun:v2";
 export type PersistedState = {
   revealed: LatLngPoint[];
   runs: RunSummary[];
+  currentStreak?: number;
+  lastRunDate?: number | null;
 };
 
 const EMPTY_STATE: PersistedState = {
   revealed: [],
-  runs: []
+  runs: [],
+  currentStreak: 0,
+  lastRunDate: null
 };
 
 export function loadPersisted(): PersistedState {
@@ -20,18 +24,27 @@ export function loadPersisted(): PersistedState {
 
     return {
       revealed: Array.isArray(parsed.revealed) ? (parsed.revealed as LatLngPoint[]) : [],
-      runs: Array.isArray(parsed.runs) ? (parsed.runs as RunSummary[]) : []
+      runs: Array.isArray(parsed.runs) ? (parsed.runs as RunSummary[]) : [],
+      currentStreak: typeof parsed.currentStreak === 'number' ? parsed.currentStreak : 0,
+      lastRunDate: typeof parsed.lastRunDate === 'number' ? parsed.lastRunDate : null
     };
   } catch {
     return EMPTY_STATE;
   }
 }
 
-export function savePersisted(state: PersistedState) {
+export function savePersisted(state: PersistedState): { success: boolean; error?: string } {
   try {
-    localStorage.setItem(KEY, JSON.stringify(state));
-  } catch {
-    // ignore quota / private mode errors
+    const serialized = JSON.stringify(state);
+    localStorage.setItem(KEY, serialized);
+    return { success: true };
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      if (err.name === 'QuotaExceededError' ||
+        err.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+        return { success: false, error: 'Storage quota exceeded' };
+      }
+    }
+    return { success: false, error: 'Failed to save' };
   }
 }
-

@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
+import { AlertTriangle, X } from "lucide-react";
 import { OnboardingOverlay } from "./components/OnboardingOverlay";
+import { InstallPrompt } from "./components/InstallPrompt";
 import { HistoryScreen } from "./screens/HistoryScreen";
 import { MapScreen } from "./screens/MapScreen";
+import { useRunStore } from "./state/useRunStore";
 import { useThemeStore } from "./state/useThemeStore";
 
 type TabId = "map" | "history";
@@ -9,6 +12,8 @@ type TabId = "map" | "history";
 export default function App() {
   const [tab, setTab] = useState<TabId>("map");
   const theme = useThemeStore((s) => s.theme);
+  const storageError = useRunStore((s) => s.storageError);
+  const dismissStorageError = useRunStore((s) => s.dismissStorageError);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -45,7 +50,28 @@ export default function App() {
           {tab === "map" ? <MapScreen /> : <HistoryScreen />}
         </main>
       </div>
+
+      {storageError && (
+        <div className="fixed bottom-4 left-4 right-4 z-50 flex items-start gap-3 rounded-xl border border-rose-500/50 bg-rose-950/90 p-4 text-rose-200 shadow-xl backdrop-blur-md animate-in slide-in-from-bottom-2">
+          <AlertTriangle className="mt-0.5 h-5 w-5 flex-none text-rose-400" />
+          <div className="flex-1">
+            <h3 className="text-sm font-bold text-rose-100">Storage Error</h3>
+            <p className="mt-1 text-xs leading-relaxed opacity-90">{storageError}</p>
+            <p className="mt-1 text-[10px] opacity-75">
+              Your progress may not be saved. Try freeing up space on your device.
+            </p>
+          </div>
+          <button
+            onClick={dismissStorageError}
+            className="-mr-1 -mt-1 rounded-lg p-2 hover:bg-rose-900/50"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       <OnboardingOverlay />
+      <InstallPrompt />
     </>
   );
 }

@@ -1,12 +1,14 @@
 import { toPng } from "html-to-image";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, useEffect } from "react";
 import { useRunStore } from "../state/useRunStore";
 import type { RunSummary } from "../types";
-import { formatKm } from "../utils/geo";
+import { formatKm, cellKey } from "../utils/geo";
 import { getRank } from "../utils/gamification";
-import { MapContainer, TileLayer, Polyline, Marker } from "react-leaflet";
+import { MapContainer, TileLayer, Polyline, Marker, useMap } from "react-leaflet";
 import L from "leaflet";
 import { X, Share2 } from "lucide-react";
+import { FogCanvas } from "./FogCanvas";
+import { FOG_BRUSH_RADIUS_PX, FOG_OPACITY } from "../config";
 
 // Fix for default Leaflet icons in PWA/Vite
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -17,23 +19,61 @@ L.Icon.Default.mergeOptions({
 });
 
 type ShareCardProps = {
-    run: RunSummary;
+    run?: RunSummary;
+    mode: 'single' | 'total';
     onClose: () => void;
 };
 
-export function ShareCard({ run, onClose }: ShareCardProps) {
+function MapFitter({ bounds }: { bounds: L.LatLngBoundsExpression }) {
+    const map = useMap();
+    useEffect(() => {
+        if (!bounds) return;
+        map.fitBounds(bounds, { padding: [50, 50] });
+    }, [map, bounds]);
+    return null;
+}
+
+export function ShareCard({ run, mode, onClose }: ShareCardProps) {
     const cardRef = useRef<HTMLDivElement>(null);
     const [generating, setGenerating] = useState(false);
 
-    // Calculate Map Bounds
-    const positions: [number, number][] = run.points.map(p => [p.lat, p.lng]);
-    const bounds = L.latLngBounds(positions);
-    const center = bounds.getCenter();
+    // Get store data for 'total' mode
+    const revealed = useRunStore(s => s.revealed);
+    const allRuns = useRunStore(s => s.runs);
 
-    // Rank Info
-    // Use a stable selector to avoid infinite loops
-    const totalDistance = useRunStore(s => s.runs.reduce((acc, r) => acc + r.distanceMeters, 0));
+    // Derived stats
+    const totalDistance = mode === 'total'
+        ? allRuns.reduce((acc, r) => acc + r.distanceMeters, 0)
+        : (run?.distanceMeters || 0);
+
     const currentRank = getRank(totalDistance);
+
+    // Calculate Map Bounds & Points
+    let positions: [number, number][] = [];
+    let bounds: L.LatLngBounds | null = null;
+    let center: L.LatLngExpression = [42.6977, 23.3219]; // Default Sofia
+
+    if (mode === 'single' && run) {
+        positions = run.points.map(p => [p.lat, p.lng]);
+        if (positions.length > 0) {
+            bounds = L.latLngBounds(positions);
+            center = bounds.getCenter();
+        }
+    } else if (mode === 'total' && revealed.length > 0) {
+        // For total mode, fit to all revealed points (sampled for performance if needed)
+        // Taking every 10th point for bounds calculation to be fast
+        const sample = revealed.filter((_, i) => i % 10 === 0).map(p => [p.lat, p.lng] as [number, number]);
+        if (sample.length > 0) {
+            bounds = L.latLngBounds(sample);
+            center = bounds.getCenter();
+        }
+    }
+
+    const explorationScore = mode === 'total' ? (() => {
+        const s = new Set<string>();
+        for (const p of revealed) s.add(cellKey(p, 4));
+        return s.size;
+    })() : 0;
 
     const handleShare = useCallback(async () => {
         if (!cardRef.current) return;
@@ -41,7 +81,7 @@ export function ShareCard({ run, onClose }: ShareCardProps) {
 
         try {
             // Small delay to ensure render
-            await new Promise(r => setTimeout(r, 100));
+            await new Promise(r => setTimeout(r, 500)); // Increased delay for map tiles
 
             const dataUrl = await toPng(cardRef.current, {
                 cacheBust: true,
@@ -52,28 +92,34 @@ export function ShareCard({ run, onClose }: ShareCardProps) {
             });
 
             const blob = await (await fetch(dataUrl)).blob();
-            const file = new File([blob], "city-fog-run.png", { type: "image/png" });
+            const filename = mode === 'total' ? "city-fog-conquest.png" : "city-fog-run.png";
+            const file = new File([blob], filename, { type: "image/png" });
+            const title = mode === 'total' ? "My City Conquest" : "My Run";
+            const text = mode === 'total'
+                ? `I've explored ${formatKm(totalDistance)}km of the city!`
+                : `I ran ${formatKm(totalDistance)}km!`;
 
             if (navigator.share && navigator.canShare({ files: [file] })) {
                 await navigator.share({
                     files: [file],
-                    title: "My Run in City Fog of War",
-                    text: `I ran ${formatKm(run.distanceMeters)}km!`
+                    title,
+                    text
                 });
             } else {
                 // Fallback download
                 const a = document.createElement("a");
                 a.href = dataUrl;
-                a.download = "city-fog-run.png";
+                a.download = filename;
                 a.click();
             }
         } catch (err) {
             console.error("Share failed", err);
+            // eslint-disable-next-line no-alert
             alert("Failed to generate image. Try again.");
         } finally {
             setGenerating(false);
         }
-    }, [run.distanceMeters]);
+    }, [totalDistance, mode]);
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in duration-200">
@@ -91,30 +137,39 @@ export function ShareCard({ run, onClose }: ShareCardProps) {
                     <div className="absolute inset-0 z-0">
                         <MapContainer
                             center={center}
-                            zoom={14} // Auto-fit bounds logic would be better but requires effect
+                            zoom={13}
                             zoomControl={false}
                             className="h-full w-full grayscale-[0.5] contrast-125 brightness-75"
                             attributionControl={false}
-                            key={run.id} // Force re-render on new run
-                            whenReady={(e) => {
-                                e.target.fitBounds(bounds, { padding: [50, 50] });
-                            }}
+                            key={mode === 'single' ? run?.id : 'total'}
                         >
+                            {bounds && <MapFitter bounds={bounds} />}
                             <TileLayer
                                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                             />
-                            <Polyline
-                                positions={positions}
-                                pathOptions={{
-                                    color: 'var(--app-accent)',
-                                    weight: 6,
-                                    opacity: 0.9,
-                                    lineCap: 'round',
-                                    lineJoin: 'round'
-                                }}
-                            />
-                            <Marker position={positions[0]} />
-                            <Marker position={positions[positions.length - 1]} />
+
+                            {/* Render Fog if Total Mode */}
+                            {mode === 'total' && (
+                                <FogCanvas revealed={revealed} radiusPx={FOG_BRUSH_RADIUS_PX} fogOpacity={FOG_OPACITY} />
+                            )}
+
+                            {/* Render Path if Single Mode */}
+                            {mode === 'single' && positions.length > 0 && (
+                                <>
+                                    <Polyline
+                                        positions={positions}
+                                        pathOptions={{
+                                            color: 'var(--app-accent)',
+                                            weight: 6,
+                                            opacity: 0.9,
+                                            lineCap: 'round',
+                                            lineJoin: 'round'
+                                        }}
+                                    />
+                                    <Marker position={positions[0]} />
+                                    <Marker position={positions[positions.length - 1]} />
+                                </>
+                            )}
                         </MapContainer>
 
                         {/* Gradient Overlay */}
@@ -126,19 +181,25 @@ export function ShareCard({ run, onClose }: ShareCardProps) {
                         {/* Logo/Branding */}
                         <div className="text-center">
                             <h2 className="text-2xl font-black uppercase tracking-tighter italic text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400 drop-shadow-lg font-outline-2">
-                                City Fog of War
+                                {mode === 'total' ? 'City Conquest' : 'City Fog of War'}
                             </h2>
                         </div>
 
                         {/* Stats Grid */}
                         <div className="grid grid-cols-2 gap-3">
                             <div className="rounded-xl bg-slate-900/80 p-4 backdrop-blur-md border border-white/10">
-                                <div className="text-xs uppercase tracking-wider text-slate-400">Distance</div>
-                                <div className="text-2xl font-bold">{formatKm(run.distanceMeters)} <span className="text-sm font-normal text-slate-400">km</span></div>
+                                <div className="text-xs uppercase tracking-wider text-slate-400">
+                                    {mode === 'total' ? 'Total Distance' : 'Distance'}
+                                </div>
+                                <div className="text-2xl font-bold">{formatKm(totalDistance)} <span className="text-sm font-normal text-slate-400">km</span></div>
                             </div>
                             <div className="rounded-xl bg-slate-900/80 p-4 backdrop-blur-md border border-white/10">
-                                <div className="text-xs uppercase tracking-wider text-slate-400">Points</div>
-                                <div className="text-2xl font-bold">{run.points.length}</div>
+                                <div className="text-xs uppercase tracking-wider text-slate-400">
+                                    {mode === 'total' ? 'Explored Area' : 'Points'}
+                                </div>
+                                <div className="text-2xl font-bold">
+                                    {mode === 'total' ? explorationScore : (run?.points.length || 0)}
+                                </div>
                             </div>
                         </div>
 
@@ -153,7 +214,15 @@ export function ShareCard({ run, onClose }: ShareCardProps) {
 
                         {/* Date / Id */}
                         <div className="text-center text-[10px] text-slate-500 font-mono">
-                            {new Date(run.startedAt).toLocaleDateString()} • {run.id.slice(-6)}
+                            {mode === 'single' && run ? (
+                                <>
+                                    {new Date(run.startedAt).toLocaleDateString()} • {run.id.slice(-6)}
+                                </>
+                            ) : (
+                                <>
+                                    ALL TIME STATS
+                                </>
+                            )}
                         </div>
 
                         {/* Bottom padding for aesthetic */}
@@ -173,7 +242,7 @@ export function ShareCard({ run, onClose }: ShareCardProps) {
                         ) : (
                             <>
                                 <Share2 size={20} />
-                                Share Snapshot
+                                {mode === 'total' ? 'Share Conquest' : 'Share Snapshot'}
                             </>
                         )}
                     </button>
