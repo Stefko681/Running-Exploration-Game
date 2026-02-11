@@ -3,7 +3,7 @@ import "leaflet/dist/leaflet.css";
 
 import type { Map as LeafletMap } from "leaflet";
 import { DivIcon } from "leaflet";
-import { LocateFixed, RotateCcw, Square, Play, Flame, Share2, Radio, Package, Activity, Gauge, Navigation } from "lucide-react";
+import { LocateFixed, RotateCcw, Square, Play, Flame, Share2, Radio, Package, Activity, Gauge, Navigation, Compass } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { MapContainer, Polyline, TileLayer, useMap, Marker, Popup } from "react-leaflet";
 import { BottomSheet } from "../components/BottomSheet";
@@ -16,6 +16,7 @@ import { StatCard } from "../components/StatCard";
 import { ShareCard } from "../components/ShareCard";
 import { FOG_BRUSH_RADIUS_PX, FOG_OPACITY } from "../config";
 import { useGeolocation } from "../hooks/useGeolocation";
+import { useDeviceOrientation } from "../hooks/useDeviceOrientation";
 import { useRunStore } from "../state/useRunStore";
 import { useSettingsStore } from "../state/useSettingsStore";
 import type { LatLngPoint } from "../types";
@@ -53,6 +54,7 @@ export function MapScreen() {
 
   // Always track location while on the Map screen
   const { status, reading } = useGeolocation(true, { enableHighAccuracy: true });
+  const { heading: deviceHeading, requestAccess: requestOrientationAccess, permissionGranted: orientationPermissionGranted } = useDeviceOrientation();
 
   // Update map zoom when user changes the setting
   useEffect(() => {
@@ -170,8 +172,8 @@ export function MapScreen() {
     return { distance: minDist, bearing };
   }, [reading, supplyDrops]);
 
-  // User heading (from GPS or device orientation could go here, for now assume 0 or use course if available)
-  const userHeading = reading?.heading || 0;
+  // User heading (prioritize compass, fall back to GPS heading, then 0)
+  const userHeading = deviceHeading ?? reading?.heading ?? 0;
   const relativeBearing = nearestDropInfo ? (nearestDropInfo.bearing - userHeading) : 0;
 
   return (
@@ -324,6 +326,13 @@ export function MapScreen() {
       {/* Controls */}
       <BottomSheet>
         <div className="flex items-center gap-2">
+          {!orientationPermissionGranted && (
+            <IconButton
+              onClick={requestOrientationAccess}
+              icon={<Compass className="h-4 w-4" />}
+              title="Enable Compass"
+            />
+          )}
           <IconButton
             active={follow}
             icon={<LocateFixed className="h-4 w-4" />}

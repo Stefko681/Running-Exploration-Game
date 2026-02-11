@@ -141,21 +141,10 @@ export const useRunStore = create<RunState>((set, get) => ({
   start: () => {
     const now = Date.now();
 
-    // Check if we need to generate new drops (once per day)
-    const lastGen = get().lastDropGenerationDate;
-    let currentDrops = get().supplyDrops;
-
-    // Simple day check
-    const needsNewDrops = !lastGen || new Date(lastGen).getDate() !== new Date(now).getDate();
-
-    if (needsNewDrops) {
-      // Try to use last known location or default
-      const lastKnown = get().runs.at(-1)?.points.at(-1) || { lat: 42.6977, lng: 23.3219, t: now };
-      currentDrops = generateDailyDrops(lastKnown); // Generate 3
-    } else {
-      // Filter expired
-      currentDrops = currentDrops.filter(d => d.expiresAt > now);
-    }
+    // Generate new drops for this session (always)
+    // Try to use last known location or default
+    const lastKnown = get().runs.at(-1)?.points.at(-1) || { lat: 42.6977, lng: 23.3219, t: now };
+    const currentDrops = generateDailyDrops(lastKnown); // Generate 3
 
     set((s) => ({
       ...s,
@@ -165,7 +154,7 @@ export const useRunStore = create<RunState>((set, get) => ({
       lastAccepted: undefined,
       runStartedAt: now,
       supplyDrops: currentDrops,
-      lastDropGenerationDate: needsNewDrops ? now : s.lastDropGenerationDate
+      lastDropGenerationDate: now
     }));
     audio.startRun();
   },
@@ -180,7 +169,8 @@ export const useRunStore = create<RunState>((set, get) => ({
           lastAccepted: undefined,
           runStartedAt: undefined,
           currentRun: [],
-          totalRunMeters: 0
+          totalRunMeters: 0,
+          supplyDrops: [] // Clear drops on invalid stop too
         };
       }
 
@@ -218,12 +208,14 @@ export const useRunStore = create<RunState>((set, get) => ({
       // Check for new achievements
       const totalDistance = runs.reduce((acc, r) => acc + r.distanceMeters, 0);
       const totalRevealed = s.revealed.length; // Approximation
+      const totalSupplyDrops = s.supplyDrops.filter(d => d.collected).length;
 
       const newUnlocked = checkNewAchievements(s.achievements, {
         totalDistance,
         totalRuns: runs.length,
         totalRevealed,
         currentStreak: streak,
+        totalSupplyDrops,
         lastRun: summary
       });
 
@@ -241,7 +233,8 @@ export const useRunStore = create<RunState>((set, get) => ({
         runs,
         currentStreak: streak,
         lastRunDate: now,
-        achievements: [...s.achievements, ...newUnlocked]
+        achievements: [...s.achievements, ...newUnlocked],
+        supplyDrops: [] // Clear drops after run
       };
     });
     // Force immediate save on stop

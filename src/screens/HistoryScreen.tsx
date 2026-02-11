@@ -6,6 +6,7 @@ import { formatKm } from "../utils/geo";
 import { getRank } from "../utils/gamification";
 import { ShareCard } from "../components/ShareCard";
 import { useState } from "react";
+import { RunDetailModal } from "../components/RunDetailModal";
 
 function formatDurationMs(ms: number): string {
   const totalSec = Math.round(ms / 1000);
@@ -46,7 +47,10 @@ function RunItem({ run, onShare }: { run: RunSummary; onShare: (run: RunSummary)
       <div className="flex flex-none items-center gap-2">
         <button
           type="button"
-          onClick={() => onShare(run)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onShare(run);
+          }}
           className="rounded-xl bg-slate-900 px-3 py-1.5 text-xs font-semibold text-slate-200 ring-1 ring-slate-700 transition-colors hover:bg-slate-800"
         >
           Share
@@ -157,6 +161,7 @@ export function HistoryScreen() {
   /* ... */
 
   const [shareRun, setShareRun] = useState<RunSummary | null>(null);
+  const [selectedRun, setSelectedRun] = useState<RunSummary | null>(null);
 
   const sortedRuns = useMemo(
     () => [...runs].sort((a, b) => b.startedAt - a.startedAt),
@@ -171,6 +176,10 @@ export function HistoryScreen() {
           mode="single"
           onClose={() => setShareRun(null)}
         />
+      )}
+
+      {selectedRun && (
+        <RunDetailModal run={selectedRun} onClose={() => setSelectedRun(null)} />
       )}
 
       <div className="h-full overflow-y-auto px-3 pb-6 pt-2">
@@ -214,7 +223,13 @@ export function HistoryScreen() {
             </div>
           ) : (
             sortedRuns.map((run) => (
-              <RunItem key={run.id} run={run} onShare={setShareRun} />
+              <div key={run.id} onClick={() => setSelectedRun(run)} className="cursor-pointer active:scale-[0.98] transition-transform">
+                <RunItem run={run} onShare={(r) => {
+                  // Prevent modal open when clicking share
+                  // logic needs to be inside RunItem or handled by stopPropagation
+                  setShareRun(r);
+                }} />
+              </div>
             ))
           )}
         </div>
