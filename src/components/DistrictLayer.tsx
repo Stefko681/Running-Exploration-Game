@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Polygon, Popup } from "react-leaflet";
 import { useDistrictStore } from "../state/useDistrictStore";
-import { Lock, Unlock, Loader2 } from "lucide-react";
+import { Lock, Unlock } from "lucide-react";
 import { useGeolocation } from "../hooks/useGeolocation";
 import { audio } from "../utils/audio";
 // import districtsData from "../data/sofia_districts.json"; // REMOVED

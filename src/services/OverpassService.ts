@@ -61,9 +61,11 @@ export class OverpassService {
 
         // 3. Fetch
         try {
-            console.log(`[Overpass] Fetching districts around ${lat}, ${lng} with radius ${radius}...`);
             const response = await fetch(OVERPASS_API_URL, {
                 method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
                 body: "data=" + encodeURIComponent(query),
             });
 
@@ -72,9 +74,7 @@ export class OverpassService {
             }
 
             const data = await response.json();
-            console.log(`[Overpass] Received ${data.elements ? data.elements.length : 0} elements.`);
             const districts = this.normalizeDistricts(data);
-            console.log(`[Overpass] Normalized into ${districts.length} districts.`);
 
             // 4. Cache
             if (districts.length > 0) {
@@ -98,7 +98,6 @@ export class OverpassService {
         if (!data || !data.elements) return [];
 
         const relations = data.elements.filter((e: any) => e.type === "relation");
-        console.log(`[Overpass] Found ${relations.length} relations.`);
 
         const waysMap = new Map();
         const nodesMap = new Map();
