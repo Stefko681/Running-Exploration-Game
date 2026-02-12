@@ -1,4 +1,4 @@
-import { X, Trophy, Map, Footprints } from "lucide-react";
+import { X, Trophy, Map } from "lucide-react";
 import { formatKm } from "../utils/geo";
 import { LeaderboardRow } from "../services/leaderboardService";
 import { getBadge } from "../utils/badges";
@@ -23,8 +23,6 @@ export function RunnerProfileModal({ runnerData, onClose }: Props) {
     };
 
     const safeName = typeof runner.name === 'string' ? runner.name : "Unknown";
-
-    const totalRuns = Math.floor(runner.distance / 2.5); // Estimate if not passed, or we should pass it? Standardize on row fields in future.
 
     // Get real badges
     const displayBadges = runner.badges
@@ -57,21 +55,16 @@ export function RunnerProfileModal({ runnerData, onClose }: Props) {
                     <div className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-6">{runner.league} League Operator</div>
 
                     {/* Stats Grid */}
-                    <div className="grid grid-cols-3 gap-2 mb-6">
+                    <div className="grid grid-cols-2 gap-4 mb-6 px-8">
                         <div className="bg-slate-800/50 p-2 rounded-lg border border-white/5">
                             <Trophy className="w-4 h-4 text-yellow-400 mx-auto mb-1" />
                             <div className="text-sm font-bold text-white">{runner.score.toLocaleString()}</div>
-                            <div className="text-[10px] text-slate-500 uppercase">Score</div>
+                            <div className="text-[10px] text-slate-500 uppercase">PTS</div>
                         </div>
                         <div className="bg-slate-800/50 p-2 rounded-lg border border-white/5">
                             <Map className="w-4 h-4 text-cyan-400 mx-auto mb-1" />
                             <div className="text-sm font-bold text-white">{formatKm(runner.distance)}</div>
                             <div className="text-[10px] text-slate-500 uppercase">Dist</div>
-                        </div>
-                        <div className="bg-slate-800/50 p-2 rounded-lg border border-white/5">
-                            <Footprints className="w-4 h-4 text-emerald-400 mx-auto mb-1" />
-                            <div className="text-sm font-bold text-white">{totalRuns}</div>
-                            <div className="text-[10px] text-slate-500 uppercase">Runs</div>
                         </div>
                     </div>
 

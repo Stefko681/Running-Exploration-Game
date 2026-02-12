@@ -7,6 +7,8 @@ type FogCanvasProps = {
   revealed: LatLngPoint[];
   /** thickness of the cleared path, in px */
   radiusPx?: number;
+  /** thickness of the cleared path, in meters (overrides radiusPx) */
+  radiusMeters?: number;
   fogOpacity?: number;
 };
 
@@ -69,9 +71,32 @@ function drawFog(
   ctx.stroke();
 }
 
-export function FogCanvas({ revealed, radiusPx = 18, fogOpacity = 0.7 }: FogCanvasProps) {
+export function FogCanvas({ revealed, radiusPx = 18, radiusMeters, fogOpacity = 0.7 }: FogCanvasProps) {
   const map = useMap();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  const getRadiusInPx = () => {
+    if (radiusMeters) {
+      // Calculate pixels for radiusMeters at current zoom
+      const center = map.getCenter();
+      const centerPoint = map.latLngToContainerPoint(center);
+      // Approximation: 1 degree latitude is constant ~111km.
+      // 1 degree longitude depends on latitude. 
+      // Let's use a simple projection of a point [lat, lng] and [lat, lng + Delta] where Delta corresponds to meters.
+      // But map.project/unproject or latLngToContainerPoint handles the projection.
+      // Let's use a point due East.
+      // At lat L, 1 degree lon = 111320 * cos(L) meters.
+      // So X meters = X / (111320 * cos(L)) degrees.
+
+      const metersPerDegLon = 111320 * Math.cos(center.lat * Math.PI / 180);
+      const deltaDeg = radiusMeters / metersPerDegLon;
+
+      const eastPoint = map.latLngToContainerPoint({ lat: center.lat, lng: center.lng + deltaDeg });
+      const r = Math.abs(eastPoint.x - centerPoint.x);
+      return Math.max(1, r); // Ensures at least 1px
+    }
+    return radiusPx;
+  };
 
   const redrawKey = useMemo(() => {
     // Changes when revealed points change (cheap-ish)
@@ -112,7 +137,8 @@ export function FogCanvas({ revealed, radiusPx = 18, fogOpacity = 0.7 }: FogCanv
     const redraw = () => {
       if (!canvasRef.current) return;
       updateSize();
-      drawFog(canvasRef.current, map, revealed, radiusPx, fogOpacity);
+      const currentRadius = getRadiusInPx();
+      drawFog(canvasRef.current, map, revealed, currentRadius, fogOpacity);
     };
 
     redraw();
@@ -130,13 +156,14 @@ export function FogCanvas({ revealed, radiusPx = 18, fogOpacity = 0.7 }: FogCanv
       container.removeChild(canvas);
       canvasRef.current = null;
     };
-  }, [map, fogOpacity, radiusPx, revealed.length]);
+  }, [map, fogOpacity, radiusPx, radiusMeters, revealed.length]); // Dependencies
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    drawFog(canvas, map, revealed, radiusPx, fogOpacity);
-  }, [map, redrawKey, radiusPx, fogOpacity, revealed]);
+    const currentRadius = getRadiusInPx();
+    drawFog(canvas, map, revealed, currentRadius, fogOpacity);
+  }, [map, redrawKey, radiusPx, radiusMeters, fogOpacity, revealed]);
 
   return null;
 }

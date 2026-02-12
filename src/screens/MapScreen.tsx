@@ -14,7 +14,7 @@ import { RunAreaSelector } from "../components/RunAreaSelector";
 import { ThemeSelector } from "../components/ThemeSelector";
 import { StatCard } from "../components/StatCard";
 import { ShareCard } from "../components/ShareCard";
-import { FOG_BRUSH_RADIUS_PX, FOG_OPACITY } from "../config";
+import { FOG_BRUSH_RADIUS_METERS, FOG_OPACITY } from "../config";
 import { useGeolocation } from "../hooks/useGeolocation";
 import { useDeviceOrientation } from "../hooks/useDeviceOrientation";
 import { useRunStore } from "../state/useRunStore";
@@ -163,9 +163,14 @@ export function MapScreen() {
     if (!nearest) return null;
 
     // Calculate bearing (initial bearing)
-    const y = Math.sin(nearest.lng - userPos.lng) * Math.cos(nearest.lat);
-    const x = Math.cos(userPos.lat) * Math.sin(nearest.lat) -
-      Math.sin(userPos.lat) * Math.cos(nearest.lat) * Math.cos(nearest.lng - userPos.lng);
+    const toRad = (deg: number) => deg * Math.PI / 180;
+    const dLng = toRad(nearest.lng - userPos.lng);
+    const lat1 = toRad(userPos.lat);
+    const lat2 = toRad(nearest.lat);
+
+    const y = Math.sin(dLng) * Math.cos(lat2);
+    const x = Math.cos(lat1) * Math.sin(lat2) -
+      Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
     const θ = Math.atan2(y, x);
     const bearing = (θ * 180 / Math.PI + 360) % 360; // 0-360 degrees
 
@@ -198,7 +203,7 @@ export function MapScreen() {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        <FogCanvas revealed={revealed} radiusPx={FOG_BRUSH_RADIUS_PX} fogOpacity={FOG_OPACITY} />
+        <FogCanvas revealed={revealed} radiusMeters={FOG_BRUSH_RADIUS_METERS} fogOpacity={FOG_OPACITY} />
 
         {currentRunPolyline.length >= 2 ? (
           <Polyline
@@ -267,8 +272,12 @@ export function MapScreen() {
                 </>
               ) : null}
             </div>
-            <RunAreaSelector />
-            <ThemeSelector />
+            {!isRunning && (
+              <>
+                <RunAreaSelector />
+                <ThemeSelector />
+              </>
+            )}
           </div>
 
           {/* Immersive HUD (Sci-Fi Overlay) */}

@@ -27,14 +27,14 @@ export function generateRandomPoint(center: LatLngPoint, radiusMeters: number): 
     return { lat: newLat, lng: newLng };
 }
 
-export function generateDailyDrops(center: LatLngPoint, count: number = 3): SupplyDrop[] {
+export function generateDailyDrops(center: LatLngPoint, count: number = 3, radiusMeters: number = 1500): SupplyDrop[] {
     const drops: SupplyDrop[] = [];
     const now = Date.now();
     const tomorrow = new Date();
     tomorrow.setHours(24, 0, 0, 0); // Expires at next midnight
 
     for (let i = 0; i < count; i++) {
-        const point = generateRandomPoint(center, 1500); // 1.5km radius
+        const point = generateRandomPoint(center, radiusMeters);
         drops.push({
             id: `drop-${now}-${i}`,
             lat: point.lat,

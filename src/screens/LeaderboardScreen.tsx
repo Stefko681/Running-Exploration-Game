@@ -34,7 +34,9 @@ export function LeaderboardScreen() {
             distance: totalDistKm,
             isUser: true,
             league: currentLeague,
-            avatar_seed: useLeaderboardStore.getState().avatarSeed
+            avatar_seed: useLeaderboardStore.getState().avatarSeed,
+            combat_style: useLeaderboardStore.getState().combatStyle || "Balanced",
+            badges: useLeaderboardStore.getState().badges || []
         };
     }, [revealed, runs, currentLeague, players]); // depend on players to force re-calc if we join
 
@@ -91,7 +93,9 @@ export function LeaderboardScreen() {
             rank: 0,
             isUser: p.user_id === myId,
             league: p.league as League,
-            avatar_seed: p.avatar_seed
+            avatar_seed: p.avatar_seed,
+            combat_style: p.user_id === myId ? useLeaderboardStore.getState().combatStyle || "Balanced" : p.combat_style,
+            badges: p.user_id === myId ? useLeaderboardStore.getState().badges || [] : p.badges
         }));
 
         // If Guest, inject ourselves

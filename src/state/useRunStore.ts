@@ -30,6 +30,8 @@ type RunState = {
   // Supply Drops
   supplyDrops: SupplyDrop[];
   lastDropGenerationDate: number | null;
+  lastCollectedDrop: SupplyDrop | null; // For toast notification
+  dropDifficulty: number; // 1 = normal, 2 = hard, etc.
 
   start: () => void;
   stop: () => void;
@@ -39,6 +41,7 @@ type RunState = {
   hydrateFromExport: (data: { revealed: LatLngPoint[]; runs: RunSummary[] }) => void;
   getLifetimeStats: () => { totalDistance: number; totalRuns: number };
   dismissStorageError: () => void;
+  clearLastCollectedDrop: () => void;
 };
 
 const persisted =
@@ -137,6 +140,10 @@ export const useRunStore = create<RunState>((set, get) => ({
   achievements: persisted.achievements ?? [],
   supplyDrops: persisted.supplyDrops ?? [],
   lastDropGenerationDate: persisted.lastDropGenerationDate ?? null,
+  lastCollectedDrop: null,
+  dropDifficulty: 1,
+
+  clearLastCollectedDrop: () => set({ lastCollectedDrop: null }),
 
   start: () => {
     const now = Date.now();
@@ -257,7 +264,9 @@ export const useRunStore = create<RunState>((set, get) => ({
       lastRunDate: null,
       achievements: [],
       supplyDrops: [],
-      lastDropGenerationDate: null
+      lastDropGenerationDate: null,
+      lastCollectedDrop: null,
+      dropDifficulty: 1
     };
     set(next);
     // Force immediate save
@@ -296,18 +305,35 @@ export const useRunStore = create<RunState>((set, get) => ({
       // Check supply drops
       let drops = s.supplyDrops;
       let dropCollected = false;
+      let collectedDrop: SupplyDrop | null = null;
+      let activeDropsCount = 0;
 
       const updatedDrops = drops.map(d => {
-        if (!d.collected && checkDropCollection(p, d)) {
-          dropCollected = true;
-          return { ...d, collected: true };
+        if (!d.collected) {
+          if (checkDropCollection(p, d)) {
+            dropCollected = true;
+            collectedDrop = d;
+            return { ...d, collected: true };
+          } else {
+            activeDropsCount++;
+          }
         }
         return d;
       });
 
-      if (dropCollected) {
-        audio.levelUp(); // Reuse sound for now
-        // TODO: Add specific XP event
+      let finalDrops = updatedDrops;
+      let currentDifficulty = s.dropDifficulty;
+
+      // If all active drops were just collected (activeDropsCount went to 0) and we had drops to begin with
+      if (drops.length > 0 && activeDropsCount === 0 && dropCollected) {
+        // Respawn logic
+        currentDifficulty += 1;
+        const newRadius = 1500 + (currentDifficulty * 500);
+        const newDrops = generateDailyDrops(p, 3, newRadius);
+        finalDrops = [...updatedDrops, ...newDrops];
+        audio.levelUp(); // Sound for "Wave Clear"
+      } else if (dropCollected) {
+        audio.unlock(); // Sound for single drop
       }
 
       return {
@@ -316,7 +342,9 @@ export const useRunStore = create<RunState>((set, get) => ({
         currentRun: nextRun,
         revealed,
         totalRunMeters: s.totalRunMeters + d,
-        supplyDrops: updatedDrops
+        supplyDrops: finalDrops,
+        lastCollectedDrop: collectedDrop || s.lastCollectedDrop,
+        dropDifficulty: currentDifficulty
       };
     });
 

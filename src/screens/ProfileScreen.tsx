@@ -33,7 +33,7 @@ export function ProfileScreen() {
     const [showIdentityEditor, setShowIdentityEditor] = useState(false);
 
     // Derived stats
-    const totalRuns = runs.length;
+    const totalRuns = runs.filter(r => r.distanceMeters > 50).length;
     const exploredCount = revealed.length;
 
     // Filter and Sort Achievements

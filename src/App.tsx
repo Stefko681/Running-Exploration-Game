@@ -28,6 +28,11 @@ export default function App() {
     document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
 
+  useEffect(() => {
+    // @ts-ignore - Expose store for testing
+    window.useRunStore = useRunStore;
+  }, []);
+
   // Prevent flash of wrong theme by setting it early if possible, but useEffect is fine for now
 
   if (showLanding) {
@@ -41,7 +46,7 @@ export default function App() {
     <>
       <div className="app-shell">
         <header className="app-header">
-          <div className="app-logo">CityQuest</div>
+          <div className="app-logo mr-6">City Quest</div>
           <div className="flex items-center gap-3 text-[11px] uppercase tracking-[0.16em] text-slate-500">
             <button
               type="button"
