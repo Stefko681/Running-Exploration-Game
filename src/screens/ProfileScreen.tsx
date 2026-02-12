@@ -6,6 +6,8 @@ import { useState, useMemo } from "react";
 import { ShareCard } from "../components/ShareCard";
 import { formatKm } from "../utils/geo";
 import { useLeaderboardStore } from "../state/useLeaderboardStore";
+import { IdentityEditor } from "../components/IdentityEditor";
+import { getBadge } from "../utils/badges";
 
 // Categories config with labels and colors
 const CATEGORIES: { id: AchievementCategory | "all"; label: string; color: string }[] = [
@@ -28,6 +30,7 @@ export function ProfileScreen() {
     // UI State
     const [activeTab, setActiveTab] = useState<AchievementCategory | "all">("all");
     const [isReverseSort, setIsReverseSort] = useState(false);
+    const [showIdentityEditor, setShowIdentityEditor] = useState(false);
 
     // Derived stats
     const totalRuns = runs.length;
@@ -138,6 +141,39 @@ export function ProfileScreen() {
                                     style={{ width: `${rank.progress}%` }}
                                 />
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Identity / Combat Style */}
+                <div className="mb-6">
+                    <div className="flex items-center justify-between mb-2 px-1">
+                        <div className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Combat Identity</div>
+                        <button
+                            onClick={() => setShowIdentityEditor(true)}
+                            className="text-[10px] uppercase font-bold text-cyan-400 hover:text-cyan-300 transition-colors bg-cyan-950/30 px-2 py-1 rounded border border-cyan-500/20"
+                        >
+                            Edit Identity
+                        </button>
+                    </div>
+                    <div className="bg-slate-900/40 rounded-xl p-4 border border-white/5 flex items-center justify-between">
+                        <div>
+                            <div className="text-xs text-slate-400 font-bold mb-1">Style</div>
+                            <div className="text-lg font-black text-white">{useLeaderboardStore(s => s.combatStyle || "Balanced")}</div>
+                        </div>
+                        <div className="flex gap-1.5">
+                            {(useLeaderboardStore(s => s.badges) || []).map((bId: string) => {
+                                const badge = getBadge(bId);
+                                if (!badge) return null;
+                                return (
+                                    <div key={bId} className={`p-2 rounded-lg ${badge.bg} ${badge.color} border border-white/5`}>
+                                        <badge.icon size={16} />
+                                    </div>
+                                );
+                            })}
+                            {(!useLeaderboardStore(s => s.badges) || useLeaderboardStore(s => s.badges).length === 0) && (
+                                <div className="text-xs text-slate-600 italic py-2">No badges</div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -259,6 +295,11 @@ export function ProfileScreen() {
                     mode="total"
                     onClose={() => setShowShare(false)}
                 />
+            )}
+
+            {/* Identity Editor */}
+            {showIdentityEditor && (
+                <IdentityEditor onClose={() => setShowIdentityEditor(false)} />
             )}
         </div>
     );

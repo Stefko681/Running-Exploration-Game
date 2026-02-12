@@ -8,6 +8,8 @@ export type LeaderboardRow = {
     distance: number;
     updated_at: string;
     avatar_seed?: string;
+    combat_style?: string;
+    badges?: any[];
 };
 
 export const leaderboardService = {
@@ -25,7 +27,9 @@ export const leaderboardService = {
                 updated_at,
                 profiles (
                     username,
-                    avatar_seed
+                    avatar_seed,
+                    combat_style,
+                    badges
                 )
             `)
             .eq('league', league)
@@ -45,7 +49,9 @@ export const leaderboardService = {
             distance: row.distance,
             updated_at: row.updated_at,
             username: row.profiles?.username || "Unknown Operator",
-            avatar_seed: row.profiles?.avatar_seed
+            avatar_seed: row.profiles?.avatar_seed,
+            combat_style: row.profiles?.combat_style || "Balanced",
+            badges: row.profiles?.badges || []
         })).filter(p => p.username !== 'Operator');
     },
 
@@ -88,6 +94,21 @@ export const leaderboardService = {
         if (error) {
             console.error("Error uploading score:", error);
             throw error;
+        }
+    },
+
+    /**
+     * Update the user's decorative profile info
+     */
+    async updateProfile(userId: string, updates: { combat_style?: string, badges?: any[] }) {
+        const { error } = await supabase
+            .from('profiles')
+            .update(updates)
+            .eq('id', userId);
+
+        if (error) {
+            console.error("Error updating profile:", error);
+            throw error; // Let the caller handl it
         }
     }
 };

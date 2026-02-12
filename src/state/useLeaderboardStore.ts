@@ -15,10 +15,13 @@ type LeaderboardState = {
     isGuest: boolean;
     username: string; // stored username
     avatarSeed: string;
+    combatStyle: string;
+    badges: any[];
 
     // Actions
     refreshLeaderboard: () => Promise<void>;
     uploadMyScore: (userId: string, username: string, score: number, distance: number) => Promise<void>;
+    updateProfile: (style: string, badges: any[]) => Promise<void>;
     setLeague: (league: League) => void;
     joinLeaderboard: (username: string) => Promise<void>;
     setAvatarSeed: (seed: string) => void;
@@ -40,6 +43,8 @@ export const useLeaderboardStore = create<LeaderboardState>()(
             isGuest: true,
             username: "Guest",
             avatarSeed: "",
+            combatStyle: "Balanced",
+            badges: [],
 
             setLeague: (league) => set({ currentLeague: league }),
             setAvatarSeed: (seed) => set({ avatarSeed: seed }),
@@ -92,6 +97,27 @@ export const useLeaderboardStore = create<LeaderboardState>()(
                 } catch (err) {
                     console.error("Failed to sync score", err);
                 }
+            },
+
+            updateProfile: async (style, badges) => {
+                set({ combatStyle: style, badges });
+
+                // If not guest, sync to backend
+                const { isGuest } = get();
+                const userId = localStorage.getItem("cityquest_user_id");
+
+                if (!isGuest && userId) {
+                    try {
+                        await leaderboardService.updateProfile(userId, {
+                            combat_style: style,
+                            badges
+                        });
+                        // Refresh to update our row in the list
+                        get().refreshLeaderboard();
+                    } catch (err) {
+                        console.error("Failed to sync profile updates", err);
+                    }
+                }
             }
         }),
         {
@@ -100,7 +126,9 @@ export const useLeaderboardStore = create<LeaderboardState>()(
                 currentLeague: state.currentLeague,
                 isGuest: state.isGuest,
                 username: state.username,
-                avatarSeed: state.avatarSeed
+                avatarSeed: state.avatarSeed,
+                combatStyle: state.combatStyle,
+                badges: state.badges
             }),
         }
     )

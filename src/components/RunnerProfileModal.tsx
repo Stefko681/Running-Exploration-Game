@@ -1,6 +1,7 @@
-import { X, Trophy, Map, Footprints, Flame, Shield, Zap, Mountain } from "lucide-react";
+import { X, Trophy, Map, Footprints } from "lucide-react";
 import { formatKm } from "../utils/geo";
 import { LeaderboardRow } from "../services/leaderboardService";
+import { getBadge } from "../utils/badges";
 
 type Props = {
     runnerData?: LeaderboardRow & { rank?: number };
@@ -17,39 +18,18 @@ export function RunnerProfileModal({ runnerData, onClose }: Props) {
         score: runnerData.score,
         distance: runnerData.distance,
         league: runnerData.league,
-        // Simulate persona properties deterministically below, or use defaults
-        persona: "balanced"
+        persona: runnerData.combat_style || "Balanced",
+        badges: runnerData.badges || []
     };
 
-    // Hash function for determinism
-    const safeId = typeof runner.id === 'string' ? runner.id : "default_id";
     const safeName = typeof runner.name === 'string' ? runner.name : "Unknown";
 
-    const hash = safeId.split("").reduce((a: number, b: string) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a }, 0);
-    const rand = (mod: number) => Math.abs((hash + mod) % mod);
+    const totalRuns = Math.floor(runner.distance / 2.5); // Estimate if not passed, or we should pass it? Standardize on row fields in future.
 
-    const totalRuns = Math.floor(runner.distance / 2.5);
-
-    // Simulate extra flavor
-    if (runner.persona === "balanced") { // Always true initially
-        const personas = ["explorer", "sprinter", "marathoner", "completionist"];
-        runner.persona = personas[rand(personas.length)];
-    }
-
-    const possibleBadges = [
-        { icon: Zap, color: "text-yellow-400", bg: "bg-yellow-400/20", label: "Fast" },
-        { icon: Mountain, color: "text-purple-400", bg: "bg-purple-400/20", label: "Climber" },
-        { icon: Flame, color: "text-orange-400", bg: "bg-orange-400/20", label: "Hot Streak" },
-        { icon: Shield, color: "text-blue-400", bg: "bg-blue-400/20", label: "Veteran" },
-        { icon: Footprints, color: "text-emerald-400", bg: "bg-emerald-400/20", label: "Traveler" },
-    ];
-
-    const badgeCount = 1 + rand(3);
-    const badgeStartIndex = rand(possibleBadges.length);
-    const badges = [];
-    for (let i = 0; i < badgeCount; i++) {
-        badges.push(possibleBadges[(badgeStartIndex + i) % possibleBadges.length]);
-    }
+    // Get real badges
+    const displayBadges = runner.badges
+        .map(id => getBadge(id))
+        .filter(Boolean) as any[];
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -102,12 +82,15 @@ export function RunnerProfileModal({ runnerData, onClose }: Props) {
                             <div className="px-2 py-1 bg-slate-800 rounded text-xs text-slate-300 border border-white/5 capitalize">
                                 {runner.persona.replace("_", " ")}
                             </div>
-                            {badges.map((b, i) => (
+                            {displayBadges.map((b, i) => (
                                 <div key={i} className={`px-2 py-1 rounded text-xs border border-white/5 flex items-center gap-1 ${b.bg} ${b.color}`}>
                                     <b.icon size={10} />
                                     {b.label}
                                 </div>
                             ))}
+                            {displayBadges.length === 0 && (
+                                <div className="text-xs text-slate-600 italic px-2 py-1">No badges equiped</div>
+                            )}
                         </div>
                     </div>
                 </div>
