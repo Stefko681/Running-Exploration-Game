@@ -14,7 +14,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
     }, []);
 
     return (
-        <div className="min-h-screen bg-slate-950 text-white overflow-hidden relative selection:bg-cyan-500/30">
+        <main className="min-h-screen bg-slate-950 text-white overflow-hidden relative selection:bg-cyan-500/30">
             {/* Background Effects */}
             <div className="absolute inset-0 z-0">
                 <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
@@ -35,64 +35,67 @@ export function LandingPage({ onStart }: LandingPageProps) {
                 </div>
 
                 {/* Hero Headline */}
-                <h1 className={`mt-8 max-w-3xl text-5xl font-black uppercase tracking-tighter text-white sm:text-7xl lg:text-8xl transition-all duration-700 delay-100 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
-                    <span className="block text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-500">
-                        Uncover
-                    </span>
-                    <span className="block text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500">
-                        Your City
-                    </span>
-                </h1>
+                <header>
+                    <h1 className={`mt-8 max-w-3xl text-5xl font-black uppercase tracking-tighter text-white sm:text-7xl lg:text-8xl transition-all duration-700 delay-100 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
+                        <span className="block text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-500">
+                            Uncover
+                        </span>
+                        <span className="block text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500">
+                            Your City
+                        </span>
+                    </h1>
 
-                <p className={`mt-8 max-w-xl text-lg font-medium leading-relaxed text-slate-400 transition-all duration-700 delay-200 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
-                    The world is covered in fog. Run to reveal it. <br className="hidden sm:block" />
-                    Turn every street into a conquest and become a legend.
-                </p>
+                    <p className={`mt-8 max-w-xl text-lg font-medium leading-relaxed text-slate-400 transition-all duration-700 delay-200 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
+                        The world is covered in fog. Run to reveal it. <br className="hidden sm:block" />
+                        Turn every street into a conquest and become a legend.
+                    </p>
+                </header>
 
                 {/* Call to Action */}
                 <div className={`mt-10 flex flex-wrap gap-4 transition-all duration-700 delay-300 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
                     <button
                         onClick={onStart}
-                        className="group relative flex items-center gap-3 rounded-full bg-white px-8 py-4 text-base font-bold uppercase tracking-wider text-slate-950 transition-all hover:bg-cyan-50 hover:scale-105 hover:shadow-[0_0_40px_-10px_rgba(34,211,238,0.5)]"
+                        aria-label="Start the game and open the map"
+                        className="group relative flex items-center gap-3 rounded-full bg-white px-8 py-4 text-base font-bold uppercase tracking-wider text-slate-950 transition-all hover:bg-cyan-50 hover:scale-105 hover:shadow-[0_0_40px_-10px_rgba(34,211,238,0.5)] focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-slate-950"
                     >
                         Start Mission
-                        <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+                        <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" aria-hidden="true" />
                     </button>
                 </div>
 
                 {/* Feature Grid */}
-                <div className={`mt-24 grid gap-8 sm:grid-cols-3 transition-all duration-1000 delay-500 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0'}`}>
-                    <div className="group rounded-2xl border border-white/5 bg-white/5 p-6 backdrop-blur-sm transition-colors hover:border-cyan-500/30 hover:bg-cyan-950/20">
+                <section aria-label="Game Features" className={`mt-24 grid gap-8 sm:grid-cols-3 transition-all duration-1000 delay-500 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0'}`}>
+                    <article className="group rounded-2xl border border-white/5 bg-white/5 p-6 backdrop-blur-sm transition-colors hover:border-cyan-500/30 hover:bg-cyan-950/20">
                         <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-400 group-hover:scale-110 transition-transform">
-                            <Map className="h-6 w-6" />
+                            <Map className="h-6 w-6" aria-hidden="true" />
                         </div>
-                        <h3 className="text-xl font-bold text-slate-100">Fog of War</h3>
+                        <h2 className="text-xl font-bold text-slate-100">Fog of War</h2>
                         <p className="mt-2 text-sm text-slate-400">
                             Your map starts blank. Every step you take clears the fog permanently.
                         </p>
-                    </div>
+                    </article>
 
-                    <div className="group rounded-2xl border border-white/5 bg-white/5 p-6 backdrop-blur-sm transition-colors hover:border-blue-500/30 hover:bg-blue-950/20">
+                    <article className="group rounded-2xl border border-white/5 bg-white/5 p-6 backdrop-blur-sm transition-colors hover:border-blue-500/30 hover:bg-blue-950/20">
                         <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400 group-hover:scale-110 transition-transform">
-                            <Trophy className="h-6 w-6" />
+                            <Trophy className="h-6 w-6" aria-hidden="true" />
                         </div>
-                        <h3 className="text-xl font-bold text-slate-100">Rank Up</h3>
+                        <h2 className="text-xl font-bold text-slate-100">Rank Up</h2>
                         <p className="mt-2 text-sm text-slate-400">
                             Earn XP for distance and exploration. Rise from <span className="text-white">Scout</span> to <span className="text-app-accent">Legend</span>.
                         </p>
-                    </div>
+                    </article>
 
-                    <div className="group rounded-2xl border border-white/5 bg-white/5 p-6 backdrop-blur-sm transition-colors hover:border-indigo-500/30 hover:bg-indigo-950/20">
+                    <article className="group rounded-2xl border border-white/5 bg-white/5 p-6 backdrop-blur-sm transition-colors hover:border-indigo-500/30 hover:bg-indigo-950/20">
                         <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-400 group-hover:scale-110 transition-transform">
-                            <Shield className="h-6 w-6" />
+                            <Shield className="h-6 w-6" aria-hidden="true" />
                         </div>
-                        <h3 className="text-xl font-bold text-slate-100">Conquer</h3>
+                        <h2 className="text-xl font-bold text-slate-100">Conquer</h2>
                         <p className="mt-2 text-sm text-slate-400">
                             Claim neighborhoods. Visualize your territory. Share your conquests.
                         </p>
-                    </div>
-                </div>
+                    </article>
+                </section>
             </div>
-        </div>
+        </main>
     );
 }
