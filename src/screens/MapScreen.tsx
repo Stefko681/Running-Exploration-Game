@@ -3,7 +3,7 @@ import "leaflet/dist/leaflet.css";
 
 import type { Map as LeafletMap } from "leaflet";
 import { DivIcon } from "leaflet";
-import { LocateFixed, RotateCcw, Square, Play, Flame, Share2, Radio, Package, Activity, Gauge, Navigation, Compass } from "lucide-react";
+import { LocateFixed, RotateCcw, Square, Play, Flame, Share2, Radio, Package, Activity, Gauge, Navigation, Compass, HelpCircle, Map as MapIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { MapContainer, Polyline, TileLayer, useMap, Marker, Popup } from "react-leaflet";
 import { BottomSheet } from "../components/BottomSheet";
@@ -14,11 +14,14 @@ import { RunAreaSelector } from "../components/RunAreaSelector";
 import { ThemeSelector } from "../components/ThemeSelector";
 import { StatCard } from "../components/StatCard";
 import { ShareCard } from "../components/ShareCard";
+import { FieldManualModal } from "../components/FieldManualModal";
+import { DistrictLayer } from "../components/DistrictLayer";
 import { FOG_BRUSH_RADIUS_METERS, FOG_OPACITY } from "../config";
 import { useGeolocation } from "../hooks/useGeolocation";
 import { useDeviceOrientation } from "../hooks/useDeviceOrientation";
 import { useRunStore } from "../state/useRunStore";
 import { useSettingsStore } from "../state/useSettingsStore";
+import { useDistrictStore } from "../state/useDistrictStore";
 import type { LatLngPoint } from "../types";
 import { cellKey, formatKm, haversineMeters } from "../utils/geo";
 
@@ -47,9 +50,11 @@ export function MapScreen() {
     supplyDrops
   } = useRunStore();
 
-  const [follow, setFollow] = useState(true);
+  const { unlockedDistricts } = useDistrictStore();
+  const [follow, setFollow] = useState(false);
   const [map, setMap] = useState<LeafletMap | null>(null);
   const [showShare, setShowShare] = useState(false);
+  const [showFieldManual, setShowFieldManual] = useState(false);
   const runZoom = useSettingsStore((s) => s.runZoom);
 
   // Always track location while on the Map screen
@@ -181,6 +186,11 @@ export function MapScreen() {
   const userHeading = deviceHeading ?? reading?.heading ?? 0;
   const relativeBearing = nearestDropInfo ? (nearestDropInfo.bearing - userHeading) : 0;
 
+  const handleNavigateToDrop = (lat: number, lng: number) => {
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=walking`;
+    window.open(url, '_blank');
+  };
+
   return (
     <div className="relative h-full w-full overflow-hidden">
       {showShare && (
@@ -188,6 +198,10 @@ export function MapScreen() {
           mode="total"
           onClose={() => setShowShare(false)}
         />
+      )}
+
+      {showFieldManual && (
+        <FieldManualModal onClose={() => setShowFieldManual(false)} />
       )}
 
       <MapContainer
@@ -203,6 +217,7 @@ export function MapScreen() {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
+        <DistrictLayer />
         <FogCanvas revealed={revealed} radiusMeters={FOG_BRUSH_RADIUS_METERS} fogOpacity={FOG_OPACITY} />
 
         {currentRunPolyline.length >= 2 ? (
@@ -228,6 +243,13 @@ export function MapScreen() {
                   <Package size={16} className="text-amber-600" />
                   <span>Supply Drop Signal</span>
                 </div>
+                <button
+                  onClick={() => handleNavigateToDrop(drop.lat, drop.lng)}
+                  className="mt-2 w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-1.5 rounded-lg transition-colors"
+                >
+                  <Navigation size={12} />
+                  Navigate
+                </button>
               </Popup>
             </Marker>
           );
@@ -258,6 +280,16 @@ export function MapScreen() {
                 align="right"
                 accent
               />
+            </div>
+            {/* District Stats */}
+            <div className="mt-2 flex items-center justify-between border-t border-slate-800/50 pt-2">
+              <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                <MapIcon size={12} />
+                <span>Districts</span>
+              </div>
+              <div className="text-xs font-bold text-slate-300">
+                <span className="text-cyan-400">{unlockedDistricts.length}</span> / 24
+              </div>
             </div>
             <div
               className={`mt-2 text-xs ${isError ? "text-rose-300" : "text-slate-400"
@@ -352,6 +384,11 @@ export function MapScreen() {
             onClick={() => setShowShare(true)}
             icon={<Share2 className="h-4 w-4" />}
             title="Share Conquest"
+          />
+          <IconButton
+            onClick={() => setShowFieldManual(true)}
+            icon={<HelpCircle className="h-4 w-4" />}
+            title="Field Manual (Help)"
           />
         </div>
 
