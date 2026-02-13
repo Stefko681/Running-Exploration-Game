@@ -38,7 +38,7 @@ type LeaderboardState = {
     refreshLeaderboard: () => Promise<void>;
     uploadMyScore: (score: number, distance: number) => Promise<void>;
     recalculateLeague: (score: number) => void;
-    updateProfile: (style: string, badges: any[]) => Promise<void>;
+    updateProfile: (style: string, badges: any[], username?: string) => Promise<void>;
     setAvatarSeed: (seed: string) => void;
     signOut: () => Promise<void>;
 };
@@ -172,16 +172,21 @@ export const useLeaderboardStore = create<LeaderboardState>()(
                 }
             },
 
-            updateProfile: async (style, badges) => {
+            updateProfile: async (style, badges, newUsername) => {
                 set({ combatStyle: style, badges });
+                if (newUsername) {
+                    set({ username: newUsername });
+                }
 
                 const { isGuest, user, username } = get();
                 if (!isGuest && user) {
                     try {
                         // Ensure profile exists before updating (for new users who haven't run yet)
+                        // Use the (potentially new) username
                         await leaderboardService.ensureProfile(user.id, username || "Operator");
 
                         await leaderboardService.updateProfile(user.id, {
+                            username: username, // Update username in DB as well
                             combat_style: style,
                             badges
                         });

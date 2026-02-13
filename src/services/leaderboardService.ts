@@ -124,7 +124,7 @@ export const leaderboardService = {
     /**
      * Update the user's decorative profile info
      */
-    async updateProfile(userId: string, updates: { combat_style?: string, badges?: any[] }) {
+    async updateProfile(userId: string, updates: { username?: string, combat_style?: string, badges?: any[] }) {
         const { error } = await supabase
             .from('profiles')
             .update(updates)

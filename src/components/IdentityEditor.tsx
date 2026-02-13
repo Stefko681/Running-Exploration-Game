@@ -8,10 +8,11 @@ type Props = {
 };
 
 export function IdentityEditor({ onClose }: Props) {
-    const { combatStyle, badges, updateProfile } = useLeaderboardStore();
+    const { combatStyle, badges, updateProfile, username } = useLeaderboardStore();
 
     const [selectedStyle, setSelectedStyle] = useState(combatStyle || "Balanced");
     const [selectedBadges, setSelectedBadges] = useState<string[]>(badges || []);
+    const [selectedUsername, setSelectedUsername] = useState(username !== "Guest" && username !== "Operator" ? username : "");
 
     const toggleBadge = (id: string) => {
         if (selectedBadges.includes(id)) {
@@ -24,7 +25,9 @@ export function IdentityEditor({ onClose }: Props) {
     };
 
     const handleSave = async () => {
-        await updateProfile(selectedStyle, selectedBadges);
+        // Enforce 3 char minimum for username if set, else keep old or default
+        const finalUsername = selectedUsername.trim().length >= 3 ? selectedUsername.trim() : undefined;
+        await updateProfile(selectedStyle, selectedBadges, finalUsername);
         onClose();
     };
 
@@ -45,6 +48,23 @@ export function IdentityEditor({ onClose }: Props) {
 
                 {/* Content Scroll */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-6">
+
+                    {/* Username Input */}
+                    <div>
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Operator Name</label>
+                        <input
+                            type="text"
+                            value={selectedUsername}
+                            onChange={(e) => setSelectedUsername(e.target.value)}
+                            placeholder="Enter callsign..."
+                            maxLength={16}
+                            className="w-full bg-slate-950/50 border border-white/10 rounded-xl px-4 py-3 text-white font-bold tracking-wide focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 placeholder:text-slate-700 uppercase"
+                        />
+                        <div className="mt-1 text-[10px] text-slate-600 flex justify-between">
+                            <span>{selectedUsername.length}/16 chars</span>
+                            {selectedUsername.length > 0 && selectedUsername.length < 3 && <span className="text-rose-500">Min 3 chars</span>}
+                        </div>
+                    </div>
 
                     {/* Combat Style */}
                     <div>

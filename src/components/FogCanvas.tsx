@@ -85,80 +85,56 @@ function drawFog(
   const h = canvas.height;
   const dpr = window.devicePixelRatio || 1;
 
-  // 1. Calculate Hex Size in Pixels based on Zoom/Meters
+  // 1. Calculate Hex Size
   const center = map.getCenter();
-  // Meters per pixel at center lat
   const latRad = center.lat * Math.PI / 180;
   const metersPerPixel = 156543.03 * Math.cos(latRad) / Math.pow(2, map.getZoom());
-  const hexSizePx = Math.max(5, (HEX_SIDE_METERS / metersPerPixel) * dpr); // Minimum 5px to avoid infinite density
 
-  // 2. Calculate Map Origin Offset (to lock pattern to ground)
-  // map.getPixelOrigin() gives the pixel coordinate of the top-left of the map layer within the projection
-  const origin = map.getPixelOrigin();
-  // We need to shift the pattern so that world(0,0) aligns with pattern(0,0) or similar.
-  // Pattern aligns to canvas (0,0).
-  // Canvas (0,0) is at map.containerPointToLayerPoint([0,0])? 
-  // Actually we move the canvas to match map pane position.
-  // The 'origin' shifts when we pan.
+  const logicalHexSize = HEX_SIDE_METERS / metersPerPixel;
 
-  // Offset in logic pixels (CS coordinates)
-  const offsetX = -origin.x;
-  const offsetY = -origin.y;
+  // 2. Calculate Offset (Anchor to Layer Origin)
+  // We position the canvas at 'topLeft' relative to the Layer (MapPane).
+  // 'topLeft' is the Viewport Top-Left in Layer Coordinates.
+  // To lock the pattern to the Layer (which moves with the map),
+  // we need to counteract the canvas position.
+  // Drawing at (0,0) in Canvas = Drawing at 'topLeft' in Layer.
+  // We want Pattern(0,0) to align with Layer(0,0).
+  // So we translate by -topLeft.
+  const topLeft = map.containerPointToLayerPoint([0, 0]);
+  const offsetX = -topLeft.x;
+  const offsetY = -topLeft.y;
 
-  // Scale offset by dpr if ctx handles dpr
-  // Context is scaled by setTransform(dpr, ...).
-  // So logical coords are used for drawing.
-  // Pattern offset should be in logical coords.
-
-  // 1. Fill fog with Pattern
+  // 3. Fill fog with Pattern
   ctx.globalCompositeOperation = "source-over";
-  ctx.clearRect(0, 0, w, h);
+  ctx.clearRect(0, 0, w / dpr, h / dpr);
 
-  const pattern = createHexPattern(ctx, fogOpacity, hexSizePx / dpr); // createHexPattern uses logical size? internal canvas needs real/logical?
-  // Let's keep createHexPattern simple: pass sizePx.
-  // wait, if we pass hexSizePx (which includes dpr), createHexPattern creates a canvas.
-  // If usePattern takes that canvas, it will be mapped 1:1 to pixels.
-  // If ctx is scaled by dpr, then a 10px interaction in ctx = 20px on screen.
-  // If pattern is 20px, it will look like 10px logical.
+  // Note: pattern is created in logical size
+  // ctx is scaled by dpr, so we pass logical size to createHexPattern
+  // and it will look correct.
+  const pattern = createHexPattern(ctx, fogOpacity, logicalHexSize);
 
   if (pattern) {
+    ctx.save();
+    // Anchor pattern to Layer Origin
+    ctx.translate(offsetX, offsetY);
+
     ctx.fillStyle = pattern;
+    // Fill the visible viewport (which is shifted by -offset in this transformed space)
+    ctx.fillRect(-offsetX, -offsetY, w / dpr, h / dpr);
 
-    // Apply transformation to lock to ground
-    const matrix = new DOMMatrix();
-    // Scale for DPR if the pattern was created assuming 1:1 pixels but we want it to match our 'hexSizePx'
-    // Actually, let's just create the pattern at logical size and let ctx scale it?
-    // createHexPattern creates a canvas. ctx.createPattern uses it as source.
-    // If I draw to an offscreen canvas of width 100, and use it as pattern on a ctx scaled by 2x,
-    // the pattern will be scaled by 2x.
-
-    // So if 'hexSizePx' includes dpr, we should DIVIDE by dpr when creating pattern if we want it to be 'logical pixels'.
-    // OR we pass logical size to createHexPattern.
-    // Let's pass logical size:
-    const logicalHexSize = HEX_SIDE_METERS / metersPerPixel;
-    const p2 = createHexPattern(ctx, fogOpacity, logicalHexSize);
-    if (p2) {
-      ctx.fillStyle = p2;
-      // matrix.translateSelf(offsetX, offsetY); 
-      // We set the matrix on the pattern
-      p2.setTransform(matrix.translate(offsetX, offsetY));
-    }
+    ctx.restore();
   } else {
     ctx.fillStyle = `rgba(0,0,0,${fogOpacity})`;
+    ctx.fillRect(0, 0, w / dpr, h / dpr);
   }
 
-  ctx.save();
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // Restore logical coords for rect fill
-  ctx.fillRect(0, 0, w / dpr, h / dpr);
-  ctx.restore();
-
-  // 2. Query Visible Points
+  // 4. Query Visible Points
   const bounds = map.getBounds();
   const visiblePoints = grid.query(bounds);
 
   if (visiblePoints.length < 1) return;
 
-  // 3. Clear revealed path (Union of Circles)
+  // 5. Clear revealed path (Union of Circles)
   ctx.globalCompositeOperation = "destination-out";
 
   const drawRadius = radiusPx * 0.6;
@@ -178,7 +154,7 @@ function drawFog(
     const lx = pt.x; // logical pixels
     const ly = pt.y;
 
-    // Bounds check
+    // Bounds check with buffer
     if (lx < -blurRadius || ly < -blurRadius || lx > (w / dpr) + blurRadius || ly > (h / dpr) + blurRadius) {
       continue;
     }
