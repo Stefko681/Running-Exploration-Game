@@ -2,7 +2,7 @@ import { useMemo, useEffect, useState } from "react";
 import { Trophy, Crown, User, AlertCircle, Loader2, SignalHigh, SignalZero } from "lucide-react";
 import { useRunStore } from "../state/useRunStore";
 import { useLeaderboardStore, League } from "../state/useLeaderboardStore";
-import { cellKey, formatKm } from "../utils/geo";
+import { cellKey } from "../utils/geo";
 import { RunnerProfileModal } from "../components/RunnerProfileModal";
 import { JoinLeaderboardModal } from "../components/JoinLeaderboardModal";
 import { Settings } from "lucide-react";
@@ -89,6 +89,7 @@ export function LeaderboardScreen() {
         let data = players.map((p) => ({
             id: p.user_id,
             user_id: p.user_id,
+            username: p.username, // Added back explicitly
             name: p.user_id === myId ? `You (${useLeaderboardStore.getState().username})` : p.username,
             score: p.score,
             distance: p.distance,
@@ -105,6 +106,7 @@ export function LeaderboardScreen() {
         if (isGuestMode) {
             data.push({
                 ...userStats,
+                username: userStats.name,
                 // Ensure ID doesn't conflict (though unlikely with UUIDs)
                 id: "guest_me",
                 user_id: "guest_me",
@@ -304,7 +306,7 @@ export function LeaderboardScreen() {
                                     </div>
                                 </div>
                                 <div className="text-[10px] text-slate-500 flex items-center gap-2">
-                                    <span>{formatKm(player.distance)}</span>
+                                    <span>{player.distance.toFixed(2)} km</span>
                                 </div>
                             </div>
 

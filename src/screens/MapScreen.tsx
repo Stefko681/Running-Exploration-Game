@@ -11,7 +11,7 @@ import { FogCanvas } from "../components/FogCanvas";
 import { IconButton } from "../components/IconButton";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { RunAreaSelector } from "../components/RunAreaSelector";
-import { ThemeSelector } from "../components/ThemeSelector";
+
 import { StatCard } from "../components/StatCard";
 import { ShareCard } from "../components/ShareCard";
 import { FieldManualModal } from "../components/FieldManualModal";
@@ -453,7 +453,6 @@ export function MapScreen() {
             {!isRunning && (
               <>
                 <RunAreaSelector />
-                <ThemeSelector />
               </>
             )}
           </div>

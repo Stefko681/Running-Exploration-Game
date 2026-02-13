@@ -8,19 +8,28 @@ export function AchievementToast() {
     const achievements = useRunStore((s) => s.achievements);
     const lastCollectedDrop = useRunStore((s) => s.lastCollectedDrop);
     const clearLastCollectedDrop = useRunStore((s) => s.clearLastCollectedDrop);
+    const isHydrated = useRunStore((s) => s.isHydrated);
 
     const [queue, setQueue] = useState<any[]>([]);
     const [current, setCurrent] = useState<any | null>(null);
     const prevCount = useRef(achievements.length);
+    const wasHydrated = useRef(false);
 
     // Detect new achievements
     useEffect(() => {
-        if (achievements.length > prevCount.current) {
+        // If we just hydrated, catch up prevCount without toast
+        if (isHydrated && !wasHydrated.current) {
+            prevCount.current = achievements.length;
+            wasHydrated.current = true;
+            return;
+        }
+
+        if (isHydrated && achievements.length > prevCount.current) {
             const newIds = achievements.slice(prevCount.current);
             setQueue((q) => [...q, ...newIds.map(id => ({ type: 'achievement', id }))]);
         }
         prevCount.current = achievements.length;
-    }, [achievements]);
+    }, [achievements, isHydrated]);
 
     // Detect drop collection
     useEffect(() => {

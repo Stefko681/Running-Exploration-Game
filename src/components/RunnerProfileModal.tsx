@@ -1,5 +1,4 @@
 import { X, Trophy, Map } from "lucide-react";
-import { formatKm } from "../utils/geo";
 import { LeaderboardRow } from "../services/leaderboardService";
 import { getBadge } from "../utils/badges";
 
@@ -11,18 +10,19 @@ type Props = {
 export function RunnerProfileModal({ runnerData, onClose }: Props) {
     if (!runnerData) return null;
 
-    // Adapt LeaderboardRow to the shape we need
+    // Adapt data to the shape we need, handling potential property name mismatches
     const runner = {
-        id: runnerData.user_id,
-        name: runnerData.username,
-        score: runnerData.score,
-        distance: runnerData.distance,
-        league: runnerData.league,
-        persona: runnerData.combat_style || "Balanced",
-        badges: runnerData.badges || []
+        id: runnerData.user_id || (runnerData as any).id,
+        name: runnerData.username || (runnerData as any).name || "Unknown",
+        score: runnerData.score || 0,
+        distance: runnerData.distance || 0,
+        league: runnerData.league || "Bronze",
+        persona: runnerData.combat_style || (runnerData as any).combat_style || "Balanced",
+        badges: runnerData.badges || [],
+        avatar_seed: runnerData.avatar_seed
     };
 
-    const safeName = typeof runner.name === 'string' ? runner.name : "Unknown";
+    const safeName = runner.name;
 
     // Get real badges
     const displayBadges = runner.badges
@@ -43,8 +43,12 @@ export function RunnerProfileModal({ runnerData, onClose }: Props) {
                     </button>
 
                     <div className="absolute -bottom-10 left-1/2 -translate-x-1/2">
-                        <div className="w-24 h-24 rounded-full bg-slate-800 border-4 border-slate-900 flex items-center justify-center shadow-xl">
-                            <span className="text-3xl font-black text-slate-500">{safeName.substring(0, 2).toUpperCase()}</span>
+                        <div className="w-24 h-24 rounded-full bg-slate-800 border-4 border-slate-900 flex items-center justify-center shadow-xl overflow-hidden">
+                            {runner.avatar_seed ? (
+                                <img src={`https://api.dicebear.com/7.x/bottts/svg?seed=${runner.avatar_seed}`} alt="avatar" className="w-full h-full" />
+                            ) : (
+                                <span className="text-3xl font-black text-slate-500">{safeName.substring(0, 2).toUpperCase()}</span>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -63,8 +67,8 @@ export function RunnerProfileModal({ runnerData, onClose }: Props) {
                         </div>
                         <div className="bg-slate-800/50 p-2 rounded-lg border border-white/5">
                             <Map className="w-4 h-4 text-cyan-400 mx-auto mb-1" />
-                            <div className="text-sm font-bold text-white">{formatKm(runner.distance)}</div>
-                            <div className="text-[10px] text-slate-500 uppercase">Dist</div>
+                            <div className="text-sm font-bold text-white">{runner.distance.toFixed(2)}</div>
+                            <div className="text-[10px] text-slate-500 uppercase">Km Dist</div>
                         </div>
                     </div>
 
@@ -72,17 +76,25 @@ export function RunnerProfileModal({ runnerData, onClose }: Props) {
                     <div className="text-left mb-4">
                         <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Combat Style</h3>
                         <div className="flex flex-wrap gap-2">
-                            <div className="px-2 py-1 bg-slate-800 rounded text-xs text-slate-300 border border-white/5 capitalize">
+                            {/* Primary Style */}
+                            <div className={`px-2 py-1 rounded text-xs font-bold border border-white/5 capitalize ${runner.persona === "Balanced" ? "bg-slate-800 text-slate-300" :
+                                runner.persona === "Sprinter" ? "bg-cyan-900/40 text-cyan-400 border-cyan-500/20" :
+                                    runner.persona === "Explorer" ? "bg-emerald-900/40 text-emerald-400 border-emerald-500/20" :
+                                        "bg-slate-800 text-cyan-400 border-cyan-500/20"
+                                }`}>
                                 {runner.persona.replace("_", " ")}
                             </div>
+
+                            {/* Badges as additional tags, matching the screenshot's mixed look */}
                             {displayBadges.map((b, i) => (
-                                <div key={i} className={`px-2 py-1 rounded text-xs border border-white/5 flex items-center gap-1 ${b.bg} ${b.color}`}>
+                                <div key={i} className={`px-2 py-1 rounded text-xs font-bold border border-white/5 flex items-center gap-1 ${b.bg} ${b.color}`}>
                                     <b.icon size={10} />
                                     {b.label}
                                 </div>
                             ))}
-                            {displayBadges.length === 0 && (
-                                <div className="text-xs text-slate-600 italic px-2 py-1">No badges equiped</div>
+
+                            {displayBadges.length === 0 && runner.persona === "Balanced" && (
+                                <div className="text-xs text-slate-600 italic px-1 py-1">Standard loadout</div>
                             )}
                         </div>
                     </div>

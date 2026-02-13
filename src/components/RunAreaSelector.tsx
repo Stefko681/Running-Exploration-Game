@@ -21,11 +21,10 @@ export function RunAreaSelector() {
               key={p.id}
               type="button"
               onClick={() => setRunZoom(p.zoom)}
-              className={`px-2.5 py-1 text-[11px] font-medium rounded-full transition-colors ${
-                active
+              className={`px-2.5 py-1 text-[11px] font-medium rounded-full transition-colors ${active
                   ? "bg-app-accentSoft text-cyan-100"
                   : "text-slate-400 hover:text-slate-100"
-              }`}
+                }`}
             >
               {p.label}
             </button>
