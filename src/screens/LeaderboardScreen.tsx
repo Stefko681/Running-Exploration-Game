@@ -1,5 +1,5 @@
 import { useMemo, useEffect, useState } from "react";
-import { Trophy, Crown, User, AlertCircle, Loader2, SignalHigh, SignalZero } from "lucide-react";
+import { Trophy, Crown, User, AlertCircle, Loader2, SignalHigh, SignalZero, X, CheckCircle2 } from "lucide-react";
 import { useRunStore } from "../state/useRunStore";
 import { useLeaderboardStore, League } from "../state/useLeaderboardStore";
 import { cellKey } from "../utils/geo";
@@ -15,12 +15,22 @@ const LEAGUE_COLORS: Record<League, string> = {
     "Master": "text-purple-400 bg-purple-900/20 border-purple-700"
 };
 
+const LEAGUE_INFO: Record<League, { minScore: number; description: string }> = {
+    "Bronze": { minScore: 0, description: "Where the journey begins." },
+    "Silver": { minScore: 10000, description: "Proving your dedication." },
+    "Gold": { minScore: 50000, description: "The elite circle of operators." },
+    "Platinum": { minScore: 200000, description: "Masters of the craft." },
+    "Diamond": { minScore: 750000, description: "Legends among runners." },
+    "Master": { minScore: 2000000, description: "The apex predators." }
+};
+
 export function LeaderboardScreen() {
     const { revealed, runs } = useRunStore();
     const { players, currentLeague, isLoading, error, refreshLeaderboard, uploadMyScore, isGuest } = useLeaderboardStore();
 
     const [selectedRunner, setSelectedRunner] = useState<string | null>(null);
     const [showJoinModal, setShowJoinModal] = useState(false);
+    const [showLeagueModal, setShowLeagueModal] = useState(false);
 
     // 1. Calculate User Stats (Client Side Authority for now)
     const userStats = useMemo(() => {
@@ -168,10 +178,13 @@ export function LeaderboardScreen() {
             {/* Header */}
             <div className="relative z-10 p-4 pb-2 border-b border-white/5 bg-slate-900/50 backdrop-blur-sm">
                 <div className="flex items-center justify-between">
-                    <div className={`px-3 py-1 rounded-full border text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${LEAGUE_COLORS[currentLeague]}`}>
+                    <button
+                        onClick={() => setShowLeagueModal(true)}
+                        className={`px-3 py-1 rounded-full border text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${LEAGUE_COLORS[currentLeague]} hover:brightness-110 active:scale-95 transition-all`}
+                    >
                         <Trophy size={14} />
                         {currentLeague} League
-                    </div>
+                    </button>
 
                     {isGuest ? (
                         <button
@@ -185,7 +198,7 @@ export function LeaderboardScreen() {
                         <div className="flex items-center gap-3">
                             <div className={`flex items-center gap-1.5 text-xs font-mono ${connectionColor}`}>
                                 <ConnectionIcon size={14} />
-                                <span>{isLoading ? "Syncing..." : "Live"}</span>
+                                {isLoading && <span className="hidden sm:inline">Syncing...</span>}
                             </div>
                         </div>
                     )}
@@ -313,6 +326,61 @@ export function LeaderboardScreen() {
                     runnerData={leaderboardData.find(p => p.user_id === selectedRunner) as any}
                     onClose={() => setSelectedRunner(null)}
                 />
+            )}
+
+            {/* League List Modal */}
+            {showLeagueModal && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                    <div className="w-full max-w-sm bg-slate-900 border border-white/10 rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[80vh]">
+                        <div className="p-4 border-b border-white/5 flex items-center justify-between bg-slate-950/50">
+                            <h3 className="font-black uppercase text-white tracking-wider flex items-center gap-2">
+                                <Trophy size={16} className="text-yellow-500" />
+                                League Tiers
+                            </h3>
+                            <button
+                                onClick={() => setShowLeagueModal(false)}
+                                className="text-slate-400 hover:text-white transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="overflow-y-auto p-2 scrollbar-hide">
+                            {(Object.keys(LEAGUE_INFO) as League[]).map((league) => {
+                                const info = LEAGUE_INFO[league];
+                                const isCurrent = currentLeague === league;
+                                const isUnlocked = userStats.score >= info.minScore;
+
+                                return (
+                                    <div
+                                        key={league}
+                                        className={`mb-2 rounded-xl p-3 border transition-all ${isCurrent
+                                            ? `bg-slate-800 ${LEAGUE_COLORS[league].replace("bg-", "border-").replace("text-", "ring-")}`
+                                            : "bg-slate-900/40 border-transparent hover:bg-slate-800/50"
+                                            } ${isUnlocked ? "opacity-100" : "opacity-50 grayscale"}`}
+                                    >
+                                        <div className="flex items-center justify-between mb-1">
+                                            <div className={`text-sm font-black uppercase tracking-wider ${isCurrent ? "text-white" : LEAGUE_COLORS[league].split(' ')[0]}`}>
+                                                {league}
+                                            </div>
+                                            {isCurrent && (
+                                                <div className="text-[10px] font-bold bg-cyan-900/30 text-cyan-400 px-2 py-0.5 rounded border border-cyan-500/30">
+                                                    Current
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="text-[10px] text-slate-400 mb-2">{info.description}</div>
+                                        <div className="flex items-center gap-2 text-[10px] font-mono text-slate-500">
+                                            <div className="bg-slate-950 px-2 py-1 rounded">
+                                                Min Score: <span className="text-white font-bold">{info.minScore.toLocaleString()}</span>
+                                            </div>
+                                            {isUnlocked && <CheckCircle2 size={12} className="text-emerald-500" />}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

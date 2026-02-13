@@ -392,11 +392,15 @@ export const useRunStore = create<RunState>((set, get) => ({
 
     // Auto-sync leaderboard with improved score formula
     import("./useLeaderboardStore").then(({ useLeaderboardStore }) => {
+      // Import cellKey dynamically or ensure it's imported at top
+      // But imports inside function are messy. Let's use the imported helper if available or reimplement string key
+      const cellKey = (p: LatLngPoint) => `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`;
+
       const lb = useLeaderboardStore.getState();
       if (!lb.isGuest) {
         const state = get();
         const totalDistKm = state.runs.reduce((acc, r) => acc + r.distanceMeters, 0) / 1000;
-        const uniqueCells = new Set(state.revealed.map(p => `${Math.round(p.lat * 200)},${Math.round(p.lng * 200)}`)).size;
+        const uniqueCells = new Set(state.revealed.map(p => cellKey(p))).size;
         // Diminishing returns on distance, linear on exploration
         const score = Math.floor((uniqueCells * 50) + (Math.sqrt(totalDistKm) * 500));
         lb.uploadMyScore(score, totalDistKm);

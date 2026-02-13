@@ -9,11 +9,11 @@ export type League = "Bronze" | "Silver" | "Gold" | "Platinum" | "Diamond" | "Ma
 
 /** Auto-calculate league from score */
 export function leagueFromScore(score: number): League {
-    if (score >= 100000) return "Master";
-    if (score >= 50000) return "Diamond";
-    if (score >= 15000) return "Platinum";
-    if (score >= 5000) return "Gold";
-    if (score >= 1000) return "Silver";
+    if (score >= 2000000) return "Master";
+    if (score >= 750000) return "Diamond";
+    if (score >= 200000) return "Platinum";
+    if (score >= 50000) return "Gold";
+    if (score >= 10000) return "Silver";
     return "Bronze";
 }
 
