@@ -3,7 +3,7 @@ import "leaflet/dist/leaflet.css";
 
 import type { Map as LeafletMap } from "leaflet";
 import { DivIcon } from "leaflet";
-import { LocateFixed, Square, Play, Flame, Share2, Radio, Package, Activity, Gauge, Navigation, Compass, HelpCircle, Map as MapIcon, Lock, Timer, Footprints, Zap, Pause } from "lucide-react";
+import { LocateFixed, Square, Play, Flame, Share2, Radio, Package, Activity, Gauge, Navigation, Compass, HelpCircle, Map as MapIcon, Lock, Timer, Zap, Pause } from "lucide-react";
 import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { MapContainer, Polyline, TileLayer, useMap, Marker, Popup } from "react-leaflet";
 import { BottomSheet } from "../components/BottomSheet";
@@ -45,15 +45,7 @@ function formatTimer(totalSec: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-// Helper: format pace as M:SS /km
-function formatPace(metersPerSec: number): string {
-  if (metersPerSec <= 0.1) return '--:--';
-  const secPerKm = 1000 / metersPerSec;
-  if (secPerKm > 30 * 60) return '--:--'; // > 30 min/km = walking
-  const m = Math.floor(secPerKm / 60);
-  const s = Math.round(secPerKm % 60);
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
+// formatPace removed - using km/h speed now
 
 // Estimate calories: ~1 kcal per kg per km (rough)
 function estimateCalories(distanceMeters: number, weightKg: number = 70): number {
@@ -238,7 +230,6 @@ export function MapScreen() {
   const speedMs = reading?.speed ?? 0;
   const speedKmh = (speedMs * 3.6).toFixed(1);
   const altitude = reading?.altitude ? Math.round(reading.altitude) : "---";
-  const pace = formatPace(speedMs);
   const calories = estimateCalories(totalRunMeters);
 
   // Auto-pause check
@@ -461,13 +452,13 @@ export function MapScreen() {
           <div className="grid grid-cols-3 gap-2 px-2 animate-in slide-in-from-bottom-4 duration-700 delay-150">
             {isRunning ? (
               <>
-                {/* PACE */}
+                {/* SPEED */}
                 <div className="flex flex-col items-center justify-center rounded-xl border border-cyan-500/20 bg-slate-900/60 p-2 backdrop-blur-md">
                   <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 mb-1 flex items-center gap-1">
-                    <Footprints size={10} /> PACE
+                    <Gauge size={10} /> SPEED
                   </div>
                   <div className="text-xl font-black text-white lining-nums tabular-nums">
-                    {pace}<span className="text-[10px] ml-0.5 text-slate-400 font-normal">/km</span>
+                    {speedKmh}<span className="text-[10px] ml-0.5 text-slate-400 font-normal">km/h</span>
                   </div>
                 </div>
 

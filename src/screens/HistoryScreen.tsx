@@ -30,13 +30,11 @@ function formatDate(ts: number): string {
   });
 }
 
-function calcPace(distMeters: number, durationMs: number): string {
-  if (distMeters < 10 || durationMs < 1000) return "--:--";
-  const secPerKm = (durationMs / 1000) / (distMeters / 1000);
-  if (secPerKm > 30 * 60) return "--:--";
-  const m = Math.floor(secPerKm / 60);
-  const s = Math.round(secPerKm % 60);
-  return `${m}:${s.toString().padStart(2, "0")}`;
+function calcSpeed(distMeters: number, durationMs: number): string {
+  if (distMeters < 10 || durationMs < 1000) return "0.0";
+  const hours = durationMs / 3600000;
+  const km = distMeters / 1000;
+  return (km / hours).toFixed(1);
 }
 
 /** Get ISO week key, e.g. "2026-W07" */
@@ -87,8 +85,8 @@ function Toast({ message, type, onDismiss }: { message: string; type: "success" 
   return (
     <div className={`fixed top-4 left-4 right-4 z-[200] flex justify-center pointer-events-none animate-in slide-in-from-top-4 fade-in duration-300`}>
       <div className={`flex items-center gap-3 rounded-xl border px-4 py-3 shadow-2xl backdrop-blur-md max-w-sm pointer-events-auto ${type === "success"
-          ? "border-emerald-500/30 bg-slate-900/90 text-emerald-400"
-          : "border-rose-500/30 bg-slate-900/90 text-rose-400"
+        ? "border-emerald-500/30 bg-slate-900/90 text-emerald-400"
+        : "border-rose-500/30 bg-slate-900/90 text-rose-400"
         }`}>
         {type === "success" ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
         <span className="text-sm font-medium text-white flex-1">{message}</span>
@@ -110,7 +108,7 @@ function RunItem({
   onDelete: (run: RunSummary) => void;
 }) {
   const duration = run.endedAt - run.startedAt;
-  const pace = calcPace(run.distanceMeters, duration);
+  const speed = calcSpeed(run.distanceMeters, duration);
 
   return (
     <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-800/80 bg-slate-900/40 px-4 py-3">
@@ -123,7 +121,7 @@ function RunItem({
             {formatKm(run.distanceMeters)} km
           </span>
           <span className="text-xs text-cyan-400 font-mono font-bold">
-            {pace} /km
+            {speed} km/h
           </span>
         </div>
         <div className="mt-1 text-xs text-slate-400">
@@ -165,7 +163,7 @@ function WeekSummary({ runs }: { runs: RunSummary[] }) {
     (a, r) => a + (r.endedAt - r.startedAt),
     0
   );
-  const avgPace = calcPace(totalDist, totalDuration);
+  const avgSpeed = calcSpeed(totalDist, totalDuration);
 
   return (
     <div className="grid grid-cols-3 gap-2 text-center">
@@ -178,8 +176,8 @@ function WeekSummary({ runs }: { runs: RunSummary[] }) {
         <div className="text-sm font-bold text-white">{runs.length}</div>
       </div>
       <div className="rounded-xl bg-slate-800/40 border border-slate-700/30 px-2 py-2">
-        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Avg Pace</div>
-        <div className="text-sm font-bold text-cyan-400 font-mono">{avgPace}</div>
+        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Avg Speed</div>
+        <div className="text-sm font-bold text-cyan-400 font-mono">{avgSpeed} <span className="text-[10px] text-slate-500 font-normal">km/h</span></div>
       </div>
     </div>
   );

@@ -23,6 +23,7 @@ const CATEGORIES: { id: AchievementCategory | "all"; label: string; color: strin
 
 export function ProfileScreen() {
     const { runs, revealed, achievements, currentStreak } = useRunStore();
+    const { username, isGuest } = useLeaderboardStore();
 
     const totalDistance = runs.reduce((acc, r) => acc + r.distanceMeters, 0);
     const rank = getRank(totalDistance);
@@ -94,7 +95,7 @@ export function ProfileScreen() {
             {/* Header Area */}
             <div className="p-4 pb-0">
                 <h1 className="text-3xl font-black uppercase tracking-tighter italic text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
-                    Operator Status
+                    {isGuest ? "Operator Profile" : `Operator: ${username}`}
                 </h1>
                 <div className="flex items-center justify-between mt-1 mb-6">
                     <div className="flex items-center gap-2 text-xs font-mono text-slate-500">
@@ -269,7 +270,7 @@ export function ProfileScreen() {
 
                 {/* List */}
                 <div className="p-4 space-y-2">
-                    {filteredAchievements.slice(0, 50).map((achievement) => { // Render limit for perf if needed, but 500 might be ok
+                    {filteredAchievements.slice(0, 50).map((achievement) => {
                         const isUnlocked = achievements.includes(achievement.id);
                         return (
                             <div
