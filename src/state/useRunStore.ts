@@ -31,6 +31,7 @@ type RunState = {
   supplyDrops: SupplyDrop[];
   lastDropGenerationDate: number | null;
   lastCollectedDrop: SupplyDrop | null; // For toast notification
+  lastDropReward?: { title: string; message: string } | null;
   dropDifficulty: number; // 1 = normal, 2 = hard, etc.
 
   start: () => void;
@@ -42,20 +43,14 @@ type RunState = {
   getLifetimeStats: () => { totalDistance: number; totalRuns: number };
   dismissStorageError: () => void;
   clearLastCollectedDrop: () => void;
+  deleteRun: (id: string) => void;
+  refreshDrops: (location: LatLngPoint) => void;
+  /** Async hydration from IndexedDB */
+  init: () => Promise<void>;
+  isHydrated: boolean;
 };
 
-const persisted =
-  typeof window !== "undefined"
-    ? loadPersisted()
-    : {
-      revealed: [],
-      runs: [],
-      currentStreak: 0,
-      lastRunDate: null,
-      achievements: [],
-      supplyDrops: [],
-      lastDropGenerationDate: null
-    };
+
 
 // Throttling mechanism for persistence
 let saveTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -69,13 +64,15 @@ function scheduleSave() {
   }, SAVE_DELAY_MS);
 }
 
-function performSave() {
+async function performSave() {
   if (saveTimeout) {
     clearTimeout(saveTimeout);
     saveTimeout = null;
   }
   const state = useRunStore.getState();
-  const result = savePersisted({
+  if (!state.isHydrated) return; // Don't overwrite if not loaded yet
+
+  const result = await savePersisted({
     revealed: state.revealed,
     runs: state.runs,
     currentStreak: state.currentStreak,
@@ -87,14 +84,14 @@ function performSave() {
   if (!result.success && result.error) {
     useRunStore.setState({ storageError: result.error });
   } else if (result.success && state.storageError) {
-    // Clear error if save succeeds
     useRunStore.setState({ storageError: undefined });
   }
 }
 
-// Ensure we save on close/hide
 if (typeof window !== "undefined") {
-  window.addEventListener("beforeunload", performSave);
+  window.addEventListener("beforeunload", () => {
+    performSave();
+  });
   window.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") {
       performSave();
@@ -127,19 +124,29 @@ function isNextDay(t1: number, t2: number) {
 
 export const useRunStore = create<RunState>((set, get) => ({
   isRunning: false,
+  isHydrated: false,
   currentRun: [],
-  revealed: persisted.revealed ?? [],
+  revealed: [],
   totalRunMeters: 0,
-  runs: persisted.runs ?? [],
+  runs: [],
   lastAccepted: undefined,
   runStartedAt: undefined,
   previewRunId: null,
   storageError: undefined,
-  currentStreak: persisted.currentStreak ?? 0,
-  lastRunDate: persisted.lastRunDate ?? null,
-  achievements: persisted.achievements ?? [],
-  supplyDrops: persisted.supplyDrops ?? [],
-  lastDropGenerationDate: persisted.lastDropGenerationDate ?? null,
+  currentStreak: 0,
+  lastRunDate: null,
+  achievements: [],
+  supplyDrops: [],
+  lastDropGenerationDate: null,
+
+  init: async () => {
+    if (get().isHydrated) return;
+    const data = await loadPersisted();
+    set({
+      ...data,
+      isHydrated: true
+    });
+  },
   lastCollectedDrop: null,
   dropDifficulty: 1,
 
@@ -148,10 +155,13 @@ export const useRunStore = create<RunState>((set, get) => ({
   start: () => {
     const now = Date.now();
 
-    // Generate new drops for this session (always)
-    // Try to use last known location or default
-    const lastKnown = get().runs.at(-1)?.points.at(-1) || { lat: 42.6977, lng: 23.3219, t: now };
-    const currentDrops = generateDailyDrops(lastKnown); // Generate 3
+    // Only generate if we have none (e.g. first run)
+    // MapScreen.tsx will now call refreshDrops independently
+    if (get().supplyDrops.length === 0) {
+      const lastKnown = get().runs.at(-1)?.points.at(-1) || { lat: 42.6977, lng: 23.3219, t: now };
+      const currentDrops = generateDailyDrops(lastKnown);
+      set({ supplyDrops: currentDrops, lastDropGenerationDate: now });
+    }
 
     set((s) => ({
       ...s,
@@ -160,8 +170,6 @@ export const useRunStore = create<RunState>((set, get) => ({
       totalRunMeters: 0,
       lastAccepted: undefined,
       runStartedAt: now,
-      supplyDrops: currentDrops,
-      lastDropGenerationDate: now
     }));
     audio.startRun();
   },
@@ -241,7 +249,7 @@ export const useRunStore = create<RunState>((set, get) => ({
         currentStreak: streak,
         lastRunDate: now,
         achievements: [...s.achievements, ...newUnlocked],
-        supplyDrops: [] // Clear drops after run
+        // supplyDrops: [] // DROPS PERSIST NOW
       };
     });
     // Force immediate save on stop
@@ -344,12 +352,16 @@ export const useRunStore = create<RunState>((set, get) => ({
         totalRunMeters: s.totalRunMeters + d,
         supplyDrops: finalDrops,
         lastCollectedDrop: collectedDrop || s.lastCollectedDrop,
-        dropDifficulty: currentDifficulty
+        dropDifficulty: currentDifficulty,
+        // Specific Reward feedback
+        lastDropReward: dropCollected ? {
+          title: "Supply Collected!",
+          message: "Bonus +100 Exploration XP added."
+        } : s.lastDropReward
       };
     });
 
     scheduleSave();
-    audio.unlock();
     return { accepted: true };
   },
 
@@ -374,5 +386,27 @@ export const useRunStore = create<RunState>((set, get) => ({
     return { totalDistance, totalRuns: runs.length };
   },
 
-  dismissStorageError: () => set({ storageError: undefined })
+  dismissStorageError: () => set({ storageError: undefined }),
+
+  deleteRun: (id) => {
+    set((s) => ({
+      ...s,
+      runs: s.runs.filter((r) => r.id !== id),
+    }));
+    performSave();
+  },
+
+  refreshDrops: (location) => {
+    const { lastDropGenerationDate } = get();
+    const now = Date.now();
+
+    // Refresh if no drops or if older than 12 hours
+    const shouldRefresh = !lastDropGenerationDate || (now - lastDropGenerationDate > 12 * 3600 * 1000);
+
+    if (shouldRefresh) {
+      const newDrops = generateDailyDrops(location);
+      set({ supplyDrops: newDrops, lastDropGenerationDate: now });
+      performSave();
+    }
+  },
 }));

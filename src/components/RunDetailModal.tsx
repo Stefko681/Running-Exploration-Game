@@ -1,6 +1,26 @@
+import { useEffect } from "react";
 import { X, Map as MapIcon, Clock, Navigation } from "lucide-react";
+import { MapContainer, TileLayer, Polyline, Marker, useMap } from "react-leaflet";
+import L from "leaflet";
 import { RunSummary } from "../types";
 import { formatKm } from "../utils/geo";
+
+// Fix for default Leaflet icons in PWA/Vite
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+    iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+    iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+    shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png"
+});
+
+function MapFitter({ bounds }: { bounds: L.LatLngBoundsExpression }) {
+    const map = useMap();
+    useEffect(() => {
+        if (!bounds) return;
+        map.fitBounds(bounds, { padding: [40, 40] });
+    }, [map, bounds]);
+    return null;
+}
 
 type Props = {
     run: RunSummary;
@@ -8,30 +28,9 @@ type Props = {
 };
 
 export function RunDetailModal({ run, onClose }: Props) {
-
-    // Calculate bounds for SVG
-    const lats = run.points.map(p => p.lat);
-    const lngs = run.points.map(p => p.lng);
-    const minLat = Math.min(...lats);
-    const maxLat = Math.max(...lats);
-    const minLng = Math.min(...lngs);
-    const maxLng = Math.max(...lngs);
-
-    const width = maxLng - minLng;
-    const height = maxLat - minLat;
-
-    // Aspect ratio and padding
-    const padding = Math.max(width, height) * 0.1;
-
-    // Normalize points to 0-100 range (SVG coordinate space)
-    // Flip Y because SVG 0 is top
-    const normalize = (val: number, min: number, range: number) => (val - min) / range * 100;
-
-    const svgPoints = run.points.map(p => {
-        const x = normalize(p.lng, minLng - padding, width + padding * 2);
-        const y = 100 - normalize(p.lat, minLat - padding, height + padding * 2); // Flip Y
-        return `${x},${y}`;
-    }).join(" ");
+    const positions: [number, number][] = run.points.map(p => [p.lat, p.lng]);
+    const bounds = positions.length > 0 ? L.latLngBounds(positions) : null;
+    const center: L.LatLngExpression = bounds ? bounds.getCenter() : [42.6977, 23.3219];
 
     const duration = Math.round((run.endedAt - run.startedAt) / 1000 / 60);
 
@@ -40,30 +39,43 @@ export function RunDetailModal({ run, onClose }: Props) {
             <div className="w-full max-w-sm bg-slate-900 rounded-2xl border border-white/10 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
 
                 {/* Header / Map Preview */}
-                <div className="relative h-64 bg-slate-950 flex items-center justify-center overflow-hidden">
-                    {/* Grid Background */}
-                    <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:20px_20px]" />
-
-                    {/* The Path */}
-                    <svg viewBox="0 0 100 100" className="w-full h-full p-8 drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]">
-                        <polyline
-                            points={svgPoints}
-                            fill="none"
-                            stroke="#06b6d4"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="animate-in fade-in duration-1000"
+                <div className="relative h-64 overflow-hidden">
+                    <MapContainer
+                        center={center}
+                        zoom={14}
+                        zoomControl={false}
+                        className="h-full w-full"
+                        attributionControl={false}
+                        key={run.id}
+                    >
+                        {bounds && <MapFitter bounds={bounds} />}
+                        <TileLayer
+                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                         />
-                        {/* Start Point */}
-                        <circle cx={svgPoints.split(" ")[0].split(",")[0]} cy={svgPoints.split(" ")[0].split(",")[1]} r="1.5" fill="#4ade80" />
-                        {/* End Point */}
-                        <circle cx={svgPoints.split(" ").slice(-1)[0].split(",")[0]} cy={svgPoints.split(" ").slice(-1)[0].split(",")[1]} r="1.5" fill="#f87171" />
-                    </svg>
+                        {positions.length > 0 && (
+                            <>
+                                <Polyline
+                                    positions={positions}
+                                    pathOptions={{
+                                        color: '#06b6d4',
+                                        weight: 5,
+                                        opacity: 0.9,
+                                        lineCap: 'round',
+                                        lineJoin: 'round'
+                                    }}
+                                />
+                                <Marker position={positions[0]} />
+                                <Marker position={positions[positions.length - 1]} />
+                            </>
+                        )}
+                    </MapContainer>
+
+                    {/* Gradient overlay for blending into stats below */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent pointer-events-none" />
 
                     <button
                         onClick={onClose}
-                        className="absolute right-4 top-4 p-2 bg-black/40 hover:bg-black/60 rounded-full text-white transition-colors backdrop-blur-md border border-white/10"
+                        className="absolute right-4 top-4 z-[1000] p-2 bg-black/40 hover:bg-black/60 rounded-full text-white transition-colors backdrop-blur-md border border-white/10"
                     >
                         <X size={20} />
                     </button>

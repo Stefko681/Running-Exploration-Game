@@ -31,12 +31,16 @@
   body,
   #root {
     height: 100%;
+    /* Prevent pull to refresh and overscroll on mobile */
+    overscroll-behavior: none;
   }
 
   body {
     background-color: var(--app-bg);
     color: #f8fafc;
     transition: background-color 0.5s ease, color 0.5s ease;
+    /* Prevent text selection on mobile UI */
+    -webkit-tap-highlight-color: transparent;
   }
 
   /* Improve Leaflet panning on touch and prevent weird selection/dragging */
@@ -72,20 +76,14 @@
     @apply flex h-full w-full flex-col bg-gradient-to-b from-black via-slate-950 to-slate-950;
   }
 
-  .app-header {
-    @apply flex items-center justify-between px-4 py-3 text-sm font-medium text-slate-300/90;
-  }
-
-  .app-logo {
-    @apply text-base font-semibold tracking-tight text-slate-50;
-  }
-
   .glass-panel {
     @apply rounded-2xl border border-slate-800/80 bg-slate-950/80 shadow-glow backdrop-blur;
   }
 
   .primary-btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-app-accentSoft px-4 py-2 text-sm font-semibold text-cyan-100 ring-1 ring-app-accent/40 transition-colors hover:bg-app-accent/25 hover:text-cyan-50 active:bg-app-accent/30;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-app-accentSoft px-4 py-2.5 text-sm font-semibold text-cyan-100 ring-1 ring-app-accent/40 transition-colors hover:bg-app-accent/25 hover:text-cyan-50 active:bg-app-accent/30;
+    /* Minimum 44px touch target */
+    min-height: 44px;
   }
 
   .primary-btn--danger {
@@ -93,7 +91,10 @@
   }
 
   .icon-btn {
-    @apply inline-flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900/80 text-slate-300 ring-1 ring-slate-800 transition-colors hover:bg-slate-800 hover:text-slate-50 active:bg-slate-700;
+    @apply inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900/80 text-slate-300 ring-1 ring-slate-800 transition-colors hover:bg-slate-800 hover:text-slate-50 active:bg-slate-700;
+    /* Minimum 44px touch target */
+    min-height: 44px;
+    min-width: 44px;
   }
 
   .icon-btn--active {
@@ -114,5 +115,26 @@
 
   .bottom-bar {
     @apply pointer-events-auto mx-auto flex w-full max-w-md items-center justify-between gap-2 rounded-2xl border border-slate-800 bg-slate-950/80 p-2 shadow-glow backdrop-blur;
+  }
+
+  /* Mobile Bottom Tab Bar */
+  .app-tab-bar {
+    @apply flex items-center justify-around border-t border-slate-800/80 bg-slate-950/95 backdrop-blur-xl;
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 4px);
+  }
+
+  .app-tab-item {
+    @apply flex flex-col items-center justify-center py-2 px-3 text-slate-500 transition-colors;
+    min-height: 52px;
+    min-width: 64px;
+  }
+
+  .app-tab-item:active {
+    @apply text-slate-300;
+    transform: scale(0.95);
+  }
+
+  .app-tab-active {
+    color: var(--app-accent) !important;
   }
 }

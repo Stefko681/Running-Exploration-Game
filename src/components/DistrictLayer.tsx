@@ -10,6 +10,7 @@ import staraZagoraDistrictsData from "../data/stara_zagora_districts.json";
 import { Lock, Unlock } from "lucide-react";
 import { useGeolocation } from "../hooks/useGeolocation";
 import { audio } from "../utils/audio";
+import { useRunStore } from "../state/useRunStore";
 import { stitchWaysToPolygons } from "../utils/districtGeometry";
 import { computeVoronoi } from "../utils/voronoi";
 import { fetchDistricts, getDistrictCacheKey } from "../services/DistrictService";
@@ -192,10 +193,12 @@ export function DistrictLayer() {
     // Memoize parsing districts from store
     const parsedDistricts = useMemo(() => normalizeDistricts(districts), [districts]);
 
-    useEffect(() => {
-        if (!reading || parsedDistricts.length === 0) return;
+    const isRunning = useRunStore((s) => s.isRunning);
 
-        // Check if user is in any LOCKED district
+    useEffect(() => {
+        if (!reading || !isRunning || parsedDistricts.length === 0) return;
+
+        // Check if user is in any LOCKED district (only while actively running)
         parsedDistricts.forEach(d => {
             const idStr = d.id.toString();
             if (isUnlocked(idStr)) return;
@@ -225,7 +228,7 @@ export function DistrictLayer() {
                 console.log(`Unlocked District: ${d.name}`);
             }
         });
-    }, [reading, parsedDistricts, isUnlocked, unlockDistrict]);
+    }, [reading, isRunning, parsedDistricts, isUnlocked, unlockDistrict]);
 
     // Show nothing while loading or if no districts
     if (parsedDistricts.length === 0) {

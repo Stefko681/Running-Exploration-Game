@@ -1,18 +1,27 @@
-import { useEffect, useState } from "react";
-import { AlertTriangle, X } from "lucide-react";
+import { useEffect, useState, lazy, Suspense } from "react";
+import { AlertTriangle, X, Map, Clock, User, Trophy } from "lucide-react";
 import { OnboardingOverlay } from "./components/OnboardingOverlay";
 
 import { AchievementToast } from "./components/AchievementToast";
-import { HistoryScreen } from "./screens/HistoryScreen";
-import { MapScreen } from "./screens/MapScreen";
-import { ProfileScreen } from "./screens/ProfileScreen";
-import { LeaderboardScreen } from "./screens/LeaderboardScreen";
 import { useRunStore } from "./state/useRunStore";
 import { useThemeStore } from "./state/useThemeStore";
+
+// Lazy-loaded screen components for optimized bundle performance
+const HistoryScreen = lazy(() => import("./screens/HistoryScreen").then(m => ({ default: m.HistoryScreen })));
+const MapScreen = lazy(() => import("./screens/MapScreen").then(m => ({ default: m.MapScreen })));
+const ProfileScreen = lazy(() => import("./screens/ProfileScreen").then(m => ({ default: m.ProfileScreen })));
+const LeaderboardScreen = lazy(() => import("./screens/LeaderboardScreen").then(m => ({ default: m.LeaderboardScreen })));
 
 import { LandingPage } from "./pages/LandingPage";
 
 type TabId = "map" | "history" | "profile" | "leaderboard";
+
+const TABS: { id: TabId; label: string; icon: typeof Map }[] = [
+  { id: "map", label: "Map", icon: Map },
+  { id: "history", label: "History", icon: Clock },
+  { id: "profile", label: "Profile", icon: User },
+  { id: "leaderboard", label: "Rankings", icon: Trophy },
+];
 
 export default function App() {
   const [tab, setTab] = useState<TabId>("map");
@@ -28,12 +37,15 @@ export default function App() {
     document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
 
+  // Initial Store Hydration
+  useEffect(() => {
+    useRunStore.getState().init();
+  }, []);
+
   useEffect(() => {
     // @ts-ignore - Expose store for testing
     window.useRunStore = useRunStore;
   }, []);
-
-  // Prevent flash of wrong theme by setting it early if possible, but useEffect is fine for now
 
   if (showLanding) {
     return <LandingPage onStart={() => {
@@ -45,52 +57,32 @@ export default function App() {
   return (
     <>
       <div className="app-shell">
-        <header className="app-header">
-          <div className="app-logo mr-6">City Quest</div>
-          <div className="flex items-center gap-3 text-[11px] uppercase tracking-[0.16em] text-slate-500">
-            <button
-              type="button"
-              onClick={() => setTab("map")}
-              className={`transition-colors ${tab === "map" ? "text-app-accent" : "hover:text-slate-300"
-                }`}
-            >
-              Map
-            </button>
-            <span className="text-slate-700">•</span>
-            <button
-              type="button"
-              onClick={() => setTab("history")}
-              className={`transition-colors ${tab === "history" ? "text-app-accent" : "hover:text-slate-300"
-                }`}
-            >
-              History
-            </button>
-            <span className="text-slate-700">•</span>
-            <button
-              type="button"
-              onClick={() => setTab("profile")}
-              className={`transition-colors ${tab === "profile" ? "text-app-accent" : "hover:text-slate-300"
-                }`}
-            >
-              Profile
-            </button>
-            <span className="text-slate-700">•</span>
-            <button
-              type="button"
-              onClick={() => setTab("leaderboard")}
-              className={`transition-colors ${tab === "leaderboard" ? "text-cyan-400 font-bold" : "hover:text-cyan-200 text-cyan-500/80"
-                }`}
-            >
-              Rankings
-            </button>
-          </div>
-        </header>
         <main className="flex-1 min-h-0">
-          {tab === "map" && <MapScreen />}
-          {tab === "history" && <HistoryScreen />}
-          {tab === "profile" && <ProfileScreen />}
-          {tab === "leaderboard" && <LeaderboardScreen />}
+          <Suspense fallback={<div className="h-full w-full bg-slate-950 flex items-center justify-center text-slate-500 font-mono text-xs uppercase animate-pulse">Initializing Interface...</div>}>
+            {tab === "map" && <MapScreen />}
+            {tab === "history" && <HistoryScreen />}
+            {tab === "profile" && <ProfileScreen />}
+            {tab === "leaderboard" && <LeaderboardScreen />}
+          </Suspense>
         </main>
+
+        {/* Mobile Bottom Tab Bar — always visible */}
+        <nav className="app-tab-bar safe-pb">
+          {TABS.map((t) => {
+            const isActive = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTab(t.id)}
+                className={`app-tab-item ${isActive ? "app-tab-active" : ""}`}
+              >
+                <t.icon className="h-5 w-5" />
+                <span className="text-[10px] font-medium mt-0.5">{t.label}</span>
+              </button>
+            );
+          })}
+        </nav>
       </div>
 
       {storageError && (
@@ -118,5 +110,4 @@ export default function App() {
     </>
   );
 }
-
 

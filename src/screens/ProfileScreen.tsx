@@ -1,13 +1,14 @@
 import { useRunStore } from "../state/useRunStore";
 import { getRank } from "../utils/gamification";
 import { ACHIEVEMENTS, AchievementCategory } from "../utils/achievements";
-import { Share2, ChevronDown, ChevronUp, CheckCircle2, RefreshCw } from "lucide-react";
+import { Share2, ChevronDown, ChevronUp, CheckCircle2, RefreshCw, Flame, Clock } from "lucide-react";
 import { useState, useMemo } from "react";
 import { ShareCard } from "../components/ShareCard";
 import { formatKm } from "../utils/geo";
 import { useLeaderboardStore } from "../state/useLeaderboardStore";
 import { IdentityEditor } from "../components/IdentityEditor";
 import { getBadge } from "../utils/badges";
+import { ThemeSelector } from "../components/ThemeSelector";
 
 // Categories config with labels and colors
 const CATEGORIES: { id: AchievementCategory | "all"; label: string; color: string }[] = [
@@ -21,7 +22,7 @@ const CATEGORIES: { id: AchievementCategory | "all"; label: string; color: strin
 ];
 
 export function ProfileScreen() {
-    const { runs, revealed, achievements } = useRunStore();
+    const { runs, revealed, achievements, currentStreak } = useRunStore();
 
     const totalDistance = runs.reduce((acc, r) => acc + r.distanceMeters, 0);
     const rank = getRank(totalDistance);
@@ -35,6 +36,17 @@ export function ProfileScreen() {
     // Derived stats
     const totalRuns = runs.filter(r => r.distanceMeters > 50).length;
     const exploredCount = revealed.length;
+    const totalTimeMs = runs.reduce((acc, r) => acc + (r.endedAt - r.startedAt), 0);
+    const totalTimeHours = (totalTimeMs / 3600000).toFixed(1);
+
+    // Build achievement stats for progress tracking
+    const achievementStats = useMemo(() => ({
+        totalDistance: totalDistance,
+        totalRuns: totalRuns,
+        totalRevealed: exploredCount,
+        currentStreak: currentStreak,
+        totalSupplyDrops: 0, // Not easily available here, but milestone tracking still works
+    }), [totalDistance, totalRuns, exploredCount, currentStreak]);
 
     // Filter and Sort Achievements
     const filteredAchievements = useMemo(() => {
@@ -84,10 +96,13 @@ export function ProfileScreen() {
                 <h1 className="text-3xl font-black uppercase tracking-tighter italic text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
                     Operator Status
                 </h1>
-                <div className="flex items-center gap-2 mt-1 mb-6 text-xs font-mono text-slate-500">
-                    <span>ID: OP-{totalRuns.toString().padStart(4, '0')}</span>
-                    <span>•</span>
-                    <span>VER: 4.2.0</span>
+                <div className="flex items-center justify-between mt-1 mb-6">
+                    <div className="flex items-center gap-2 text-xs font-mono text-slate-500">
+                        <span>ID: OP-{totalRuns.toString().padStart(4, '0')}</span>
+                        <span>•</span>
+                        <span>VER: 4.2.0</span>
+                    </div>
+                    <ThemeSelector />
                 </div>
 
                 {/* Rank Card */}
@@ -118,9 +133,9 @@ export function ProfileScreen() {
                                             useLeaderboardStore.getState().uploadMyScore(id, username, 0, 0); // Trigger sync
                                         }
                                     }}
-                                    className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer"
+                                    className="absolute inset-0 bg-black/40 flex items-center justify-center cursor-pointer active:bg-black/60 transition-colors"
                                 >
-                                    <RefreshCw size={20} className="text-white drop-shadow-md" />
+                                    <RefreshCw size={20} className="text-white/70 drop-shadow-md" />
                                 </button>
                             </div>
                             <div>
@@ -178,15 +193,34 @@ export function ProfileScreen() {
                     </div>
                 </div>
 
+                {/* Streak */}
+                {currentStreak > 0 && (
+                    <div className="mb-6 flex items-center gap-3 rounded-xl border border-orange-500/20 bg-orange-950/20 p-4">
+                        <Flame className="h-8 w-8 text-orange-400 fill-orange-500" />
+                        <div>
+                            <div className="text-xs font-bold uppercase tracking-wider text-orange-400">
+                                Active Streak
+                            </div>
+                            <div className="text-2xl font-black text-white">
+                                {currentStreak} <span className="text-sm font-medium text-orange-400/70">days</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Stats Grid */}
-                <div className="grid grid-cols-2 gap-2 mb-8">
+                <div className="grid grid-cols-3 gap-2 mb-8">
                     <div className="bg-slate-900/40 rounded-lg p-3 border border-white/5">
-                        <div className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Total Dist</div>
-                        <div className="text-xl font-bold text-white">{formatKm(totalDistance)}km</div>
+                        <div className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Distance</div>
+                        <div className="text-lg font-bold text-white">{formatKm(totalDistance)}km</div>
                     </div>
                     <div className="bg-slate-900/40 rounded-lg p-3 border border-white/5">
                         <div className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Explored</div>
-                        <div className="text-xl font-bold text-white">{exploredCount}</div>
+                        <div className="text-lg font-bold text-white">{exploredCount.toLocaleString()}</div>
+                    </div>
+                    <div className="bg-slate-900/40 rounded-lg p-3 border border-white/5">
+                        <div className="text-[10px] uppercase tracking-wider text-slate-500 font-bold flex items-center gap-1"><Clock size={10} /> Time</div>
+                        <div className="text-lg font-bold text-white">{totalTimeHours}h</div>
                     </div>
                 </div>
             </div>
@@ -259,12 +293,34 @@ export function ProfileScreen() {
                                         </div>
                                         <p className="text-xs text-slate-500 leading-tight mt-0.5">{achievement.description}</p>
 
-                                        {/* Difficulty / Value Tag */}
-                                        <div className="mt-2 flex items-center gap-2">
-                                            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-600 bg-slate-900/50 px-1.5 py-0.5 rounded">
-                                                Level {achievement.difficulty}
-                                            </span>
-                                        </div>
+                                        {/* Progress bar for locked achievements with progress */}
+                                        {!isUnlocked && achievement.progress && (() => {
+                                            const { current, target } = achievement.progress(achievementStats);
+                                            const pct = Math.min(100, (current / target) * 100);
+                                            return (
+                                                <div className="mt-2">
+                                                    <div className="flex justify-between text-[9px] font-mono text-slate-600 mb-0.5">
+                                                        <span>{Math.floor(current).toLocaleString()} / {target.toLocaleString()}</span>
+                                                        <span>{Math.round(pct)}%</span>
+                                                    </div>
+                                                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+                                                        <div
+                                                            className="h-full rounded-full bg-cyan-600/50 transition-all duration-700"
+                                                            style={{ width: `${pct}%` }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
+
+                                        {/* Difficulty tag for unlocked */}
+                                        {isUnlocked && (
+                                            <div className="mt-2 flex items-center gap-2">
+                                                <span className="text-[9px] font-bold uppercase tracking-wider text-slate-600 bg-slate-900/50 px-1.5 py-0.5 rounded">
+                                                    Level {achievement.difficulty}
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>

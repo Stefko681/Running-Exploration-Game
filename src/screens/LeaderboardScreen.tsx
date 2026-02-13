@@ -4,6 +4,8 @@ import { useRunStore } from "../state/useRunStore";
 import { useLeaderboardStore, League } from "../state/useLeaderboardStore";
 import { cellKey, formatKm } from "../utils/geo";
 import { RunnerProfileModal } from "../components/RunnerProfileModal";
+import { JoinLeaderboardModal } from "../components/JoinLeaderboardModal";
+import { Settings } from "lucide-react";
 
 const LEAGUE_COLORS: Record<League, string> = {
     "Bronze": "text-orange-700 bg-orange-900/20 border-orange-800",
@@ -19,6 +21,7 @@ export function LeaderboardScreen() {
     const { players, currentLeague, isLoading, error, refreshLeaderboard, uploadMyScore, isGuest, joinLeaderboard } = useLeaderboardStore();
 
     const [selectedRunner, setSelectedRunner] = useState<string | null>(null);
+    const [showJoinModal, setShowJoinModal] = useState(false);
 
     // 1. Calculate User Stats (Client Side Authority for now)
     const userStats = useMemo(() => {
@@ -171,25 +174,39 @@ export function LeaderboardScreen() {
 
                     {isGuest ? (
                         <button
-                            onClick={() => {
-                                const name = prompt("Enter your Operator Name to join the Global Leaderboard:");
-                                if (name && name.trim().length > 0) {
-                                    joinLeaderboard(name.trim());
-                                }
-                            }}
+                            onClick={() => setShowJoinModal(true)}
                             className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded-full text-xs font-bold transition-colors shadow-lg shadow-emerald-900/20"
                         >
                             <User size={14} />
                             Join Leaderboard
                         </button>
                     ) : (
-                        <div className={`flex items-center gap-1.5 text-xs font-mono ${connectionColor}`}>
-                            <ConnectionIcon size={14} />
-                            <span>{isLoading ? "Syncing..." : "Live"}</span>
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => setShowJoinModal(true)} // reuse modal for name change if we want, or add specific modal
+                                className="text-slate-500 hover:text-white transition-colors"
+                                title="Change Designation"
+                            >
+                                <Settings size={14} />
+                            </button>
+                            <div className={`flex items-center gap-1.5 text-xs font-mono ${connectionColor}`}>
+                                <ConnectionIcon size={14} />
+                                <span>{isLoading ? "Syncing..." : "Live"}</span>
+                            </div>
                         </div>
                     )}
                 </div>
             </div>
+
+            {showJoinModal && (
+                <JoinLeaderboardModal
+                    onJoin={(name) => {
+                        joinLeaderboard(name);
+                        setShowJoinModal(false);
+                    }}
+                    onClose={() => setShowJoinModal(false)}
+                />
+            )}
 
             {/* Podium */}
             {top3.length >= 3 && (

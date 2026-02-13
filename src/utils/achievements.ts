@@ -12,6 +12,8 @@ export type Achievement = {
     category: AchievementCategory;
     difficulty: number; // 1-100
     value: number; // For sorting
+    /** Current progress extractor for progress bar display */
+    progress?: (stats: AchievementStats) => { current: number; target: number };
 };
 
 export type AchievementStats = {
@@ -33,79 +35,88 @@ const isBetweenHours = (date: number, start: number, end: number) => {
 
 // --- 1. Logarithmic Milestones (The "Grind") ---
 
-const createMilestone = (
-    id: string,
-    cat: AchievementCategory,
-    title: string,
-    desc: string,
-    icon: LucideIcon,
-    diff: number,
-    val: number,
-    cond: (s: AchievementStats) => boolean
-): Achievement => ({
-    id, title, description: desc, icon, category: cat, difficulty: diff, value: val, condition: cond
-});
 
 const milestones: Achievement[] = [];
 
-// Distance Milestones (1, 5, 10, 25, 50, 100... 10000)
+// Distance Milestones (1, 5, 10, 21, 42, 50, 100... 10000)
+const distNames = [
+    "First Steps", "Warmed Up", "Double Digits", "Half Marathoner", "Marathoner",
+    "Fifty Down", "Century Runner", "Road Warrior", "Ultrarunner", "Thousand Club",
+    "Ironclad", "Legendary Distance", "Transcendent"
+];
 const distPoints = [1, 5, 10, 21, 42, 50, 100, 250, 500, 1000, 2500, 5000, 10000];
 distPoints.forEach((km, i) => {
-    milestones.push(createMilestone(
-        `dist_${km}`,
-        "distance",
-        km === 42 ? "Marathoner" : km === 21 ? "Half Marathoner" : `Distance Tier ${i + 1}`,
-        `Accumulate ${km.toLocaleString()} km total distance.`,
-        Activity,
-        Math.min(100, i * 8 + 1),
-        km,
-        s => s.totalDistance >= km * 1000
-    ));
+    milestones.push({
+        id: `dist_${km}`,
+        category: "distance",
+        title: distNames[i] || `Distance ${km}km`,
+        description: `Accumulate ${km.toLocaleString()} km total distance.`,
+        icon: Activity,
+        difficulty: Math.min(100, i * 8 + 1),
+        value: km,
+        condition: s => s.totalDistance >= km * 1000,
+        progress: s => ({ current: Math.min(s.totalDistance / 1000, km), target: km }),
+    });
 });
 
 // Run Count Milestones
+const runNames = [
+    "Lacing Up", "Regulars Club", "Dedicated", "Committed", "Half Century",
+    "Centurion", "Obsessed", "Year-Round", "Five Hundred Strong", "The Thousand"
+];
 const runPoints = [1, 5, 10, 25, 50, 100, 200, 365, 500, 1000];
 runPoints.forEach((count, i) => {
-    milestones.push(createMilestone(
-        `runs_${count}`,
-        "runs",
-        `Runner Rank ${i + 1}`,
-        `Complete ${count} total runs.`,
-        Footprints,
-        Math.min(100, i * 10 + 1),
-        count,
-        s => s.totalRuns >= count
-    ));
+    milestones.push({
+        id: `runs_${count}`,
+        category: "runs",
+        title: runNames[i] || `${count} Runs`,
+        description: `Complete ${count} total runs.`,
+        icon: Footprints,
+        difficulty: Math.min(100, i * 10 + 1),
+        value: count,
+        condition: s => s.totalRuns >= count,
+        progress: s => ({ current: Math.min(s.totalRuns, count), target: count }),
+    });
 });
 
 // Exploration Milestones
+const expNames = [
+    "Peeling the Map", "Neighbourhood Watch", "Quarter Explorer", "District Scanner",
+    "City Cartographer", "Metropolitan", "Grand Surveyor", "The Unveiler"
+];
 const expPoints = [100, 500, 1000, 2500, 5000, 10000, 25000, 50000];
 expPoints.forEach((pts, i) => {
-    milestones.push(createMilestone(
-        `exp_${pts}`,
-        "exploration",
-        `Explorer Rank ${i + 1}`,
-        `Reveal ${pts.toLocaleString()} fog points.`,
-        Map,
-        Math.min(100, i * 12 + 2),
-        pts,
-        s => s.totalRevealed >= pts
-    ));
+    milestones.push({
+        id: `exp_${pts}`,
+        category: "exploration",
+        title: expNames[i] || `Explorer ${pts}`,
+        description: `Reveal ${pts.toLocaleString()} fog points.`,
+        icon: Map,
+        difficulty: Math.min(100, i * 12 + 2),
+        value: pts,
+        condition: s => s.totalRevealed >= pts,
+        progress: s => ({ current: Math.min(s.totalRevealed, pts), target: pts }),
+    });
 });
 
 // Drop Milestones
+const dropNames = [
+    "First Loot", "Scavenger", "Supply Runner", "Quartermaster",
+    "Stockpiler", "Resource Baron", "Hoarder Supreme", "Drop Lord"
+];
 const dropPoints = [1, 5, 10, 25, 50, 100, 250, 500];
 dropPoints.forEach((count, i) => {
-    milestones.push(createMilestone(
-        `drops_${count}`,
-        "drops",
-        `Scavenger Rank ${i + 1}`,
-        `Collect ${count} supply drops.`,
-        Package,
-        Math.min(100, i * 12 + 5),
-        count,
-        s => s.totalSupplyDrops >= count
-    ));
+    milestones.push({
+        id: `drops_${count}`,
+        category: "drops",
+        title: dropNames[i] || `${count} Drops`,
+        description: `Collect ${count} supply drops.`,
+        icon: Package,
+        difficulty: Math.min(100, i * 12 + 5),
+        value: count,
+        condition: s => s.totalSupplyDrops >= count,
+        progress: s => ({ current: Math.min(s.totalSupplyDrops, count), target: count }),
+    });
 });
 
 // --- 2. Unique / Flavored Challenges (The "Fun" Stuff) ---

@@ -3,8 +3,8 @@ import "leaflet/dist/leaflet.css";
 
 import type { Map as LeafletMap } from "leaflet";
 import { DivIcon } from "leaflet";
-import { LocateFixed, RotateCcw, Square, Play, Flame, Share2, Radio, Package, Activity, Gauge, Navigation, Compass, HelpCircle, Map as MapIcon } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { LocateFixed, Square, Play, Flame, Share2, Radio, Package, Activity, Gauge, Navigation, Compass, HelpCircle, Map as MapIcon, Lock, Timer, Footprints, Zap, Pause } from "lucide-react";
+import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { MapContainer, Polyline, TileLayer, useMap, Marker, Popup } from "react-leaflet";
 import { BottomSheet } from "../components/BottomSheet";
 import { FogCanvas } from "../components/FogCanvas";
@@ -36,26 +36,106 @@ function RecenterOnUser({ point }: { point: LatLngPoint | null }) {
   return null;
 }
 
+// Helper: format seconds into MM:SS or HH:MM:SS
+function formatTimer(totalSec: number): string {
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+// Helper: format pace as M:SS /km
+function formatPace(metersPerSec: number): string {
+  if (metersPerSec <= 0.1) return '--:--';
+  const secPerKm = 1000 / metersPerSec;
+  if (secPerKm > 30 * 60) return '--:--'; // > 30 min/km = walking
+  const m = Math.floor(secPerKm / 60);
+  const s = Math.round(secPerKm % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+// Estimate calories: ~1 kcal per kg per km (rough)
+function estimateCalories(distanceMeters: number, weightKg: number = 70): number {
+  return Math.round((distanceMeters / 1000) * weightKg * 1.036);
+}
+
 export function MapScreen() {
   const {
     isRunning,
     start,
     stop,
-    resetAll,
     currentRun,
     revealed,
     totalRunMeters,
     acceptPoint,
     currentStreak,
-    supplyDrops
+    supplyDrops,
+    runStartedAt,
+    refreshDrops,
+    lastDropReward
   } = useRunStore();
+
+  // Live timer
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    if (!isRunning || !runStartedAt) {
+      setElapsed(0);
+      return;
+    }
+    // Initialize with already-elapsed time
+    setElapsed(Math.floor((Date.now() - runStartedAt) / 1000));
+    const interval = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - runStartedAt) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isRunning, runStartedAt]);
+
+  // Auto-pause detection
+  const [isAutoPaused, setIsAutoPaused] = useState(false);
+  const pauseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const checkAutoPause = useCallback((speedKmh: number) => {
+    if (!isRunning) return;
+    if (speedKmh < 0.5) {
+      // If speed is very low for 10 seconds, show auto-pause indicator
+      if (!pauseTimer.current) {
+        pauseTimer.current = setTimeout(() => setIsAutoPaused(true), 10000);
+      }
+    } else {
+      if (pauseTimer.current) {
+        clearTimeout(pauseTimer.current);
+        pauseTimer.current = null;
+      }
+      setIsAutoPaused(false);
+    }
+  }, [isRunning]);
 
   const { unlockedDistricts } = useDistrictStore();
   const [follow, setFollow] = useState(false);
   const [map, setMap] = useState<LeafletMap | null>(null);
   const [showShare, setShowShare] = useState(false);
   const [showFieldManual, setShowFieldManual] = useState(false);
+  const [showDistrictList, setShowDistrictList] = useState(false);
+  const districts = useDistrictStore((s) => s.districts);
   const runZoom = useSettingsStore((s) => s.runZoom);
+
+  // Parse district names from raw data
+  const districtNames = useMemo(() => {
+    if (!districts || districts.length === 0) return [];
+    const names: { id: string; name: string; unlocked: boolean }[] = [];
+    for (const el of districts as any[]) {
+      const id = el.id?.toString();
+      const name = el.tags?.name || el.tags?.["name:en"] || "Unknown District";
+      if (id && name) {
+        names.push({ id, name, unlocked: unlockedDistricts.includes(id) });
+      }
+    }
+    names.sort((a, b) => {
+      if (a.unlocked !== b.unlocked) return a.unlocked ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+    return names;
+  }, [districts, unlockedDistricts]);
 
   // Always track location while on the Map screen
   const { status, reading } = useGeolocation(true, { enableHighAccuracy: true });
@@ -70,7 +150,11 @@ export function MapScreen() {
 
   useEffect(() => {
     if (!reading) return;
-    acceptPoint({ lat: reading.lat, lng: reading.lng, t: reading.t });
+    const p = { lat: reading.lat, lng: reading.lng, t: reading.t };
+    acceptPoint(p);
+
+    // Periodically check if we need to refresh drops (idle or running)
+    refreshDrops(p);
   }, [reading?.lat, reading?.lng, reading?.t]);
 
   // On first load, try to center the map on the user's current location explicitly.
@@ -113,11 +197,17 @@ export function MapScreen() {
         ? "GPS tracking…"
         : "GPS idle";
 
-  const runStateLabel = isRunning ? "Running" : currentRun.length ? "Paused" : "Not tracking";
-  const accuracyLabel =
-    reading && typeof reading.accuracy === "number"
-      ? `${Math.round(reading.accuracy)} m`
-      : "n/a";
+  const runStateLabel = isRunning
+    ? (isAutoPaused ? "Paused" : "Running")
+    : currentRun.length ? "Stopped" : "Ready";
+  const accuracyValue = reading && typeof reading.accuracy === "number" ? Math.round(reading.accuracy) : null;
+  const accuracyLabel = accuracyValue !== null ? `${accuracyValue} m` : "n/a";
+  const accuracyColor = accuracyValue === null
+    ? "text-slate-500"
+    : accuracyValue <= 10 ? "text-emerald-400"
+      : accuracyValue <= 25 ? "text-cyan-400"
+        : accuracyValue <= 50 ? "text-amber-400"
+          : "text-rose-400";
   const isError = status.kind === "error";
 
   const handleStartRun = () => {
@@ -145,8 +235,23 @@ export function MapScreen() {
     iconAnchor: [16, 16]
   });
 
-  const speedKmh = reading?.speed ? (reading.speed * 3.6).toFixed(1) : "0.0";
+  const speedMs = reading?.speed ?? 0;
+  const speedKmh = (speedMs * 3.6).toFixed(1);
   const altitude = reading?.altitude ? Math.round(reading.altitude) : "---";
+  const pace = formatPace(speedMs);
+  const calories = estimateCalories(totalRunMeters);
+
+  // Auto-pause check
+  useEffect(() => {
+    checkAutoPause(speedMs * 3.6);
+  }, [speedMs, checkAutoPause]);
+
+  // Exploration percentage (Sofia ~490 km²)
+  // Each cell at zoom 4 ≈ 0.005 km² → total ~98000 cells for Sofia
+  const explorationPercent = useMemo(() => {
+    const totalCityCells = 98000; // approximate for Sofia
+    return Math.min(100, (explorationScore / totalCityCells) * 100).toFixed(2);
+  }, [explorationScore]);
 
   // Calculate nearest drop distance and bearing
   const nearestDropInfo = useMemo(() => {
@@ -202,6 +307,27 @@ export function MapScreen() {
 
       {showFieldManual && (
         <FieldManualModal onClose={() => setShowFieldManual(false)} />
+      )}
+
+      {/* Reward Toast */}
+      {lastDropReward && (
+        <div className="fixed top-20 left-4 right-4 z-[100] animate-in slide-in-from-top-4 fade-in duration-500">
+          <div className="mx-auto max-w-sm bg-slate-900/90 border border-amber-500/50 rounded-2xl p-4 backdrop-blur-md shadow-2xl flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-500 border border-amber-500/30">
+              <Package size={24} />
+            </div>
+            <div className="flex-1">
+              <div className="text-sm font-bold text-white">{lastDropReward.title}</div>
+              <div className="text-xs text-slate-400">{lastDropReward.message}</div>
+            </div>
+            <button
+              onClick={() => useRunStore.setState({ lastDropReward: null })}
+              className="text-slate-500 hover:text-white"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
       )}
 
       <MapContainer
@@ -262,35 +388,55 @@ export function MapScreen() {
           <div className="glass-panel px-4 py-3">
             <div className="mb-2 flex items-center justify-between text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500">
               <div className="flex items-center gap-3">
-                <span>{runStateLabel}</span>
+                <span className={isAutoPaused ? 'text-amber-400' : ''}>{runStateLabel}</span>
                 {currentStreak > 0 && (
                   <div className="flex items-center gap-1 rounded-full bg-orange-950/30 px-1.5 py-0.5 text-[10px] font-bold text-orange-400 ring-1 ring-orange-500/20 backdrop-blur-sm animate-in fade-in zoom-in">
                     <Flame className="h-3 w-3 fill-orange-500" />
-                    <span>{currentStreak} DAY STREAK</span>
+                    <span>{currentStreak}d</span>
                   </div>
                 )}
               </div>
-              <span className="text-slate-600">GPS • {accuracyLabel}</span>
+              <span className={accuracyColor}>GPS • {accuracyLabel}</span>
             </div>
             <div className="flex items-center justify-between gap-4">
               <StatCard label="Distance" value={`${formatKm(totalRunMeters)} km`} />
               <StatCard
-                label="Exploration"
-                value={explorationScore}
+                label="Explored"
+                value={`${explorationPercent}%`}
                 align="right"
                 accent
               />
             </div>
             {/* District Stats */}
-            <div className="mt-2 flex items-center justify-between border-t border-slate-800/50 pt-2">
+            <div
+              className="mt-2 flex items-center justify-between border-t border-slate-800/50 pt-2 cursor-pointer hover:bg-slate-800/30 -mx-4 px-4 py-1 rounded-lg transition-colors"
+              onClick={() => setShowDistrictList((v) => !v)}
+            >
               <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
                 <MapIcon size={12} />
                 <span>Districts</span>
               </div>
               <div className="text-xs font-bold text-slate-300">
-                <span className="text-cyan-400">{unlockedDistricts.length}</span> / 24
+                <span className="text-cyan-400">{unlockedDistricts.length}</span> / {districtNames.length || 24}
               </div>
             </div>
+            {showDistrictList && districtNames.length > 0 && (
+              <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border border-slate-700/50 bg-slate-950/80 backdrop-blur-md">
+                {districtNames.map((d) => (
+                  <div
+                    key={d.id}
+                    className={`flex items-center gap-2 px-3 py-2 border-b border-slate-800/30 last:border-0 text-xs ${d.unlocked ? 'text-slate-200' : 'text-slate-500'}`}
+                  >
+                    {d.unlocked ? (
+                      <span className="text-emerald-400 text-sm">✓</span>
+                    ) : (
+                      <Lock size={12} className="text-rose-400/70" />
+                    )}
+                    <span className={d.unlocked ? 'font-medium' : 'font-normal'}>{d.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
             <div
               className={`mt-2 text-xs ${isError ? "text-rose-300" : "text-slate-400"
                 }`}
@@ -312,54 +458,95 @@ export function MapScreen() {
             )}
           </div>
 
-          {/* Immersive HUD (Sci-Fi Overlay) */}
+          {/* Immersive HUD — context-sensitive */}
           <div className="grid grid-cols-3 gap-2 px-2 animate-in slide-in-from-bottom-4 duration-700 delay-150">
-            {/* Speed */}
-            <div className="flex flex-col items-center justify-center rounded-xl border border-cyan-500/20 bg-slate-900/60 p-2 backdrop-blur-md">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 mb-1 flex items-center gap-1">
-                <Gauge size={10} /> SPD
-              </div>
-              <div className="text-xl font-black text-white lining-nums tabular-nums">
-                {speedKmh}<span className="text-[10px] ml-0.5 text-slate-400 font-normal">km/h</span>
-              </div>
-            </div>
+            {isRunning ? (
+              <>
+                {/* PACE */}
+                <div className="flex flex-col items-center justify-center rounded-xl border border-cyan-500/20 bg-slate-900/60 p-2 backdrop-blur-md">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 mb-1 flex items-center gap-1">
+                    <Footprints size={10} /> PACE
+                  </div>
+                  <div className="text-xl font-black text-white lining-nums tabular-nums">
+                    {pace}<span className="text-[10px] ml-0.5 text-slate-400 font-normal">/km</span>
+                  </div>
+                </div>
 
-            {/* Signal / Nearest Drop */}
-            <div className="flex flex-col items-center justify-center rounded-xl border border-amber-500/20 bg-slate-900/60 p-2 backdrop-blur-md relative overflow-hidden">
-              {nearestDropInfo ? (
-                <>
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400 mb-1 flex items-center gap-1 z-10">
-                    <Navigation size={10} style={{ transform: `rotate(${relativeBearing}deg)` }} className="transition-transform duration-500" /> TARGET
+                {/* TIMER */}
+                <div className={`flex flex-col items-center justify-center rounded-xl border bg-slate-900/60 p-2 backdrop-blur-md relative overflow-hidden ${isAutoPaused ? 'border-amber-500/30' : 'border-emerald-500/20'
+                  }`}>
+                  <div className={`text-[10px] font-bold uppercase tracking-wider mb-1 flex items-center gap-1 z-10 ${isAutoPaused ? 'text-amber-400' : 'text-emerald-400'
+                    }`}>
+                    {isAutoPaused ? <Pause size={10} /> : <Timer size={10} />}
+                    {isAutoPaused ? 'PAUSED' : 'TIME'}
                   </div>
                   <div className="text-xl font-black text-white lining-nums tabular-nums z-10">
-                    {Math.round(nearestDropInfo.distance)}<span className="text-[10px] ml-0.5 text-slate-400 font-normal">m</span>
+                    {formatTimer(elapsed)}
                   </div>
-                  {/* Pulse effect if close */}
-                  {nearestDropInfo.distance < 100 && (
-                    <div className="absolute inset-0 bg-amber-500/10 animate-pulse z-0" />
+                  {isAutoPaused && (
+                    <div className="absolute inset-0 bg-amber-500/5 animate-pulse z-0" />
                   )}
-                </>
-              ) : (
-                <>
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1 flex items-center gap-1">
-                    <Radio size={10} /> SIG
-                  </div>
-                  <div className="text-md font-bold text-slate-400">
-                    NO SIGNAL
-                  </div>
-                </>
-              )}
-            </div>
+                </div>
 
-            {/* Altitude */}
-            <div className="flex flex-col items-center justify-center rounded-xl border border-emerald-500/20 bg-slate-900/60 p-2 backdrop-blur-md">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mb-1 flex items-center gap-1">
-                <Activity size={10} /> ALT
-              </div>
-              <div className="text-xl font-black text-white lining-nums tabular-nums">
-                {altitude}<span className="text-[10px] ml-0.5 text-slate-400 font-normal">m</span>
-              </div>
-            </div>
+                {/* CALORIES */}
+                <div className="flex flex-col items-center justify-center rounded-xl border border-rose-500/20 bg-slate-900/60 p-2 backdrop-blur-md">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-rose-400 mb-1 flex items-center gap-1">
+                    <Zap size={10} /> CAL
+                  </div>
+                  <div className="text-xl font-black text-white lining-nums tabular-nums">
+                    {calories}<span className="text-[10px] ml-0.5 text-slate-400 font-normal">kcal</span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Speed */}
+                <div className="flex flex-col items-center justify-center rounded-xl border border-cyan-500/20 bg-slate-900/60 p-2 backdrop-blur-md">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 mb-1 flex items-center gap-1">
+                    <Gauge size={10} /> SPD
+                  </div>
+                  <div className="text-xl font-black text-white lining-nums tabular-nums">
+                    {speedKmh}<span className="text-[10px] ml-0.5 text-slate-400 font-normal">km/h</span>
+                  </div>
+                </div>
+
+                {/* Signal / Nearest Drop */}
+                <div className="flex flex-col items-center justify-center rounded-xl border border-amber-500/20 bg-slate-900/60 p-2 backdrop-blur-md relative overflow-hidden">
+                  {nearestDropInfo ? (
+                    <>
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400 mb-1 flex items-center gap-1 z-10">
+                        <Navigation size={10} style={{ transform: `rotate(${relativeBearing}deg)` }} className="transition-transform duration-500" /> TARGET
+                      </div>
+                      <div className="text-xl font-black text-white lining-nums tabular-nums z-10">
+                        {Math.round(nearestDropInfo.distance)}<span className="text-[10px] ml-0.5 text-slate-400 font-normal">m</span>
+                      </div>
+                      {nearestDropInfo.distance < 100 && (
+                        <div className="absolute inset-0 bg-amber-500/10 animate-pulse z-0" />
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1 flex items-center gap-1">
+                        <Radio size={10} /> SIG
+                      </div>
+                      <div className="text-md font-bold text-slate-400">
+                        NO SIGNAL
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Altitude */}
+                <div className="flex flex-col items-center justify-center rounded-xl border border-emerald-500/20 bg-slate-900/60 p-2 backdrop-blur-md">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mb-1 flex items-center gap-1">
+                    <Activity size={10} /> ALT
+                  </div>
+                  <div className="text-xl font-black text-white lining-nums tabular-nums">
+                    {altitude}<span className="text-[10px] ml-0.5 text-slate-400 font-normal">m</span>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -409,15 +596,6 @@ export function MapScreen() {
               Start run
             </PrimaryButton>
           )}
-
-          <PrimaryButton
-            onClick={resetAll}
-            leftIcon={<RotateCcw className="h-4 w-4" />}
-            className="!bg-slate-900 !text-slate-300 !ring-slate-700 hover:!bg-slate-800"
-            title="Reset fog"
-          >
-            Reset
-          </PrimaryButton>
         </div>
       </BottomSheet>
     </div>
