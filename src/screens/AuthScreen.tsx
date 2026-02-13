@@ -64,7 +64,7 @@ export function AuthScreen({ onClose }: AuthScreenProps) {
                                 input: 'rounded-xl',
                             }
                         }}
-                        providers={['google']}
+                        providers={[]}
                         theme="dark"
                         showLinks={true}
                         magicLink={true}
