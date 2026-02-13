@@ -1,0 +1,673 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.10 2d4cfc48",
+  "osm3s": {
+    "timestamp_osm_base": "2026-02-12T23:56:16Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "node",
+  "id": 273812532,
+  "lat": 42.6003667,
+  "lon": 27.3850574,
+  "tags": {
+    "name": "кв. Ветрен",
+    "name:bg": "кв. Ветрен",
+    "name:en": "Vetren",
+    "place": "suburb",
+    "source": "bgtopomaps",
+    "wikidata": "Q2565805",
+    "wikipedia": "bg:Ветрен (квартал на Бургас)"
+  }
+},
+{
+  "type": "node",
+  "id": 273874789,
+  "lat": 42.6275888,
+  "lon": 27.4876834,
+  "tags": {
+    "ekatte": "63183",
+    "int_name": "Rudnik",
+    "name": "Рудник",
+    "name:bg": "Рудник",
+    "name:en": "Rudnik",
+    "name:fr": "Roudnik",
+    "place": "suburb",
+    "population": "3894",
+    "population:date": "2017",
+    "source": "bgtopomaps",
+    "source:population": "wikipedia",
+    "wikidata": "Q1010068",
+    "wikipedia": "bg:Рудник (квартал на Бургас)"
+  }
+},
+{
+  "type": "node",
+  "id": 273877125,
+  "lat": 42.6279200,
+  "lon": 27.3940900,
+  "tags": {
+    "name": "кв. Банево",
+    "name:bg": "кв. Банево",
+    "name:de": "Banewo",
+    "name:en": "Banevo",
+    "name:fr": "Banevo",
+    "place": "suburb",
+    "source": "bgtopomaps",
+    "wikidata": "Q806422",
+    "wikipedia": "bg:Банево"
+  }
+},
+{
+  "type": "node",
+  "id": 273877165,
+  "lat": 42.6129362,
+  "lon": 27.4932365,
+  "tags": {
+    "addr:postcode": "8115",
+    "ekatte": "81164",
+    "int_name": "Cherno more",
+    "is_in:country": "България",
+    "is_in:municipality": "Бургас",
+    "is_in:region": "Бургас",
+    "name": "Черно море",
+    "name:en": "Cherno more",
+    "name:fr": "Tcherno more",
+    "place": "suburb",
+    "population": "2161",
+    "population:date": "2017",
+    "source": "bgtopomaps",
+    "source:population": "wikipedia",
+    "wikidata": "Q1027817",
+    "wikipedia": "bg:Черно море (квартал на Бургас)"
+  }
+},
+{
+  "type": "node",
+  "id": 281562176,
+  "lat": 42.5608286,
+  "lon": 27.5229259,
+  "tags": {
+    "int_name": "kv. Sarafovo",
+    "name": "кв. Сарафово",
+    "name:bg": "кв. Сарафово",
+    "name:de": "Sarafowo",
+    "place": "suburb",
+    "wikidata": "Q2224290",
+    "wikipedia": "bg:Сарафово"
+  }
+},
+{
+  "type": "node",
+  "id": 286652613,
+  "lat": 42.4459375,
+  "lon": 27.4870547,
+  "tags": {
+    "alt_name:de": "Krajmorie",
+    "name": "кв. Крайморие",
+    "name:bg": "кв. Крайморие",
+    "name:de": "Kraimorie",
+    "name:en": "kv. Kraуmorie",
+    "name:fr": "Kraïmorie",
+    "place": "suburb",
+    "wikidata": "Q727072",
+    "wikipedia": "bg:Крайморие"
+  }
+},
+{
+  "type": "node",
+  "id": 286743509,
+  "lat": 42.5170228,
+  "lon": 27.3721845,
+  "tags": {
+    "alt_name:de": "Dolno Ezerovo",
+    "name": "кв. Долно Езерово",
+    "name:bg": "кв. Долно Езерово",
+    "name:de": "Dolno Eserowo",
+    "name:en": "kv. Dolno Ezerovo",
+    "name:fr": "Dolno Ezerovo",
+    "name:tr": "Baya Köy",
+    "place": "suburb",
+    "wikidata": "Q1168771",
+    "wikipedia": "bg:Долно Езерово"
+  }
+},
+{
+  "type": "node",
+  "id": 286849792,
+  "lat": 42.4841476,
+  "lon": 27.3787553,
+  "tags": {
+    "alt_name:de": "Gorno Ezerovo",
+    "name": "кв. Горно Езерово",
+    "name:bg": "кв. Горно Езерово",
+    "name:de": "Gorno Eserowo",
+    "name:en": "kv. Gorno Ezerovo",
+    "name:fr": "Gorno Ezerovo",
+    "place": "suburb",
+    "wikidata": "Q1538359",
+    "wikipedia": "bg:Горно Езерово"
+  }
+},
+{
+  "type": "node",
+  "id": 288235759,
+  "lat": 42.4783798,
+  "lon": 27.4432717,
+  "tags": {
+    "name": "кв. Победа",
+    "name:de": "Pobeda",
+    "name:en": "kv. Pobeda",
+    "name:fr": "Pobeda",
+    "place": "suburb",
+    "wikidata": "Q2100051",
+    "wikipedia": "bg:Победа (квартал на Бургас)"
+  }
+},
+{
+  "type": "node",
+  "id": 288242889,
+  "lat": 42.4877789,
+  "lon": 27.4481562,
+  "tags": {
+    "alt_name:de": "Akatsijte",
+    "name": "кв. Акациите",
+    "name:de": "Akaziite",
+    "name:en": "kv. Akaciite",
+    "place": "suburb",
+    "wikidata": "Q416575",
+    "wikipedia": "bg:Акациите"
+  }
+},
+{
+  "type": "node",
+  "id": 288296809,
+  "lat": 42.4566495,
+  "lon": 27.4160902,
+  "tags": {
+    "name": "ж.к. Меден рудник",
+    "name:bg": "ж.к. Меден рудник",
+    "name:de": "Meden Rudnik",
+    "name:en": "Meden Rudnik",
+    "name:fr": "Meden Roudnik",
+    "place": "suburb",
+    "wikidata": "Q1916091",
+    "wikipedia": "bg:Меден рудник (жилищен комплекс)"
+  }
+},
+{
+  "type": "node",
+  "id": 288316823,
+  "lat": 42.4963279,
+  "lon": 27.4649192,
+  "tags": {
+    "name": "ж.к. Възраждане",
+    "name:bg": "ж.к. Възраждане",
+    "name:de": "Wasraschdane",
+    "name:en": "Vazrazhdane",
+    "name:fr": "Vazrajdane",
+    "place": "suburb",
+    "wikidata": "Q1738298",
+    "wikipedia": "bg:Възраждане (жилищен комплекс на Бургас)"
+  }
+},
+{
+  "type": "node",
+  "id": 288317384,
+  "lat": 42.5053595,
+  "lon": 27.4658866,
+  "tags": {
+    "alt_name:de": "Bratya Miladinovi",
+    "name": "ж.к. Братя Миладинови",
+    "name:bg": "ж.к. Братя Миладинови",
+    "name:de": "Bratja Miladinowi",
+    "name:en": "Bratya Miladinovi",
+    "name:fr": "Bratya Miladinovi",
+    "place": "suburb",
+    "wikidata": "Q899687",
+    "wikipedia": "bg:Братя Миладинови (жилищен комплекс)"
+  }
+},
+{
+  "type": "node",
+  "id": 288317770,
+  "lat": 42.5067369,
+  "lon": 27.4778636,
+  "tags": {
+    "alt_name:de": "Lazur",
+    "name": "ж.к. Лазур",
+    "name:bg": "ж.к. Лазур",
+    "name:de": "Lasur",
+    "name:en": "Lazur",
+    "name:fr": "Lazour",
+    "old_name": "ж.к. Толбухин",
+    "place": "suburb",
+    "wikidata": "Q1687384",
+    "wikipedia": "bg:Лазур"
+  }
+},
+{
+  "type": "node",
+  "id": 288318237,
+  "lat": 42.5176014,
+  "lon": 27.4659768,
+  "tags": {
+    "alt_name:de": "Zornitsa",
+    "name": "ж.к. Зорница",
+    "name:bg": "ж.к. Зорница",
+    "name:de": "Sorniza",
+    "name:en": "zhk. Zornitsa",
+    "name:fr": "Zornitsa",
+    "place": "suburb",
+    "wikidata": "Q2303468",
+    "wikipedia": "bg:Зорница (жилищен комплекс на Бургас)"
+  }
+},
+{
+  "type": "node",
+  "id": 288318320,
+  "lat": 42.5199543,
+  "lon": 27.4524303,
+  "tags": {
+    "name": "ж.к. П. Р. Славейков",
+    "name:bg": "ж.к. П. Р. Славейков",
+    "name:en": "P.R Slaveykov",
+    "name:fr": "Petko Rachov Slaveïkov",
+    "place": "suburb",
+    "wikidata": "Q1709268",
+    "wikipedia": "bg:Петко Славейков (жилищен комплекс)"
+  }
+},
+{
+  "type": "node",
+  "id": 288318363,
+  "lat": 42.5254472,
+  "lon": 27.4623755,
+  "tags": {
+    "alt_name:de": "Izgew",
+    "name": "ж.к. Изгрев",
+    "name:bg": "ж.к. Изгрев",
+    "name:de": "Isgrew",
+    "name:en": "Izgrev",
+    "name:fr": "Izgrev",
+    "place": "suburb",
+    "wikidata": "Q1584385",
+    "wikipedia": "bg:Изгрев (жилищен комплекс на Бургас)"
+  }
+},
+{
+  "type": "node",
+  "id": 502733189,
+  "lat": 42.5330445,
+  "lon": 27.4093630,
+  "tags": {
+    "alt_name:de": "Lozovo",
+    "name": "кв. Лозово",
+    "name:bg": "кв. Лозово",
+    "name:de": "Losowo",
+    "name:en": "kv. Lozovo",
+    "name:fr": "Lozovo",
+    "name:tr": "Bağ Tarla",
+    "place": "suburb",
+    "wikidata": "Q1870646",
+    "wikipedia": "bg:Лозово"
+  }
+},
+{
+  "type": "node",
+  "id": 3405145571,
+  "lat": 42.5220590,
+  "lon": 27.4329075,
+  "tags": {
+    "name": "Промишлена зона - Север",
+    "name:en": "Industrial Zone - North",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 4330849851,
+  "lat": 42.4618083,
+  "lon": 27.4179697,
+  "tags": {
+    "name": "Зона А",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 4330849852,
+  "lat": 42.4561093,
+  "lon": 27.4216926,
+  "tags": {
+    "name": "Зона Б",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 4330849853,
+  "lat": 42.4524284,
+  "lon": 27.4162316,
+  "tags": {
+    "name": "Зона В",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 4330849854,
+  "lat": 42.4584088,
+  "lon": 27.4089521,
+  "tags": {
+    "name": "Зона Г",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 7780251411,
+  "lat": 42.5699050,
+  "lon": 27.6135098,
+  "tags": {
+    "alt_name": "кв. Св. Георги",
+    "name": "кв. Свети Георги",
+    "name:bg": "кв. Свети Георги",
+    "name:en": "kv. Sveti Georgi",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 7780256611,
+  "lat": 42.5563552,
+  "lon": 27.6449962,
+  "tags": {
+    "alt_name": "Old Town",
+    "name": "кв. Стария град",
+    "name:bg": "кв. Стария град",
+    "name:en": "kv. Stariya grad",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 7780264811,
+  "lat": 42.4931321,
+  "lon": 27.4603753,
+  "tags": {
+    "name": "ЖП Фондови жилища",
+    "name:bg": "ЖП Фондови жилища",
+    "name:en": "ZhP Fondovi zhilishta",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 7780273199,
+  "lat": 42.5082282,
+  "lon": 27.4662033,
+  "tags": {
+    "name": "кв. Работнически жилища",
+    "name:bg": "кв. Работнически жилища",
+    "name:en": "Rabotnicheski zhilishta",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 7780290391,
+  "lat": 42.5635178,
+  "lon": 27.6297643,
+  "tags": {
+    "name": "кв. Свобода",
+    "name:bg": "кв. Свобода",
+    "name:en": "kv. Svoboda",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 8494850999,
+  "lat": 42.4972256,
+  "lon": 27.4762273,
+  "tags": {
+    "name": "Централна градска част",
+    "name:bg": "Централна градска част",
+    "name:en": "Central Burgas",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 8494851000,
+  "lat": 42.4654966,
+  "lon": 27.4062860,
+  "tags": {
+    "name": "Зона Д",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 10567074466,
+  "lat": 42.6117141,
+  "lon": 27.4207403,
+  "tags": {
+    "alt_name": "м- Погребите",
+    "name": "в.з. Погребите",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 12147364791,
+  "lat": 42.5324188,
+  "lon": 27.4531544,
+  "tags": {
+    "name": "кв. Хоризонт",
+    "name:en": "Horizont",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 12147369427,
+  "lat": 42.5274180,
+  "lon": 27.4426406,
+  "tags": {
+    "name": "кв. Мадика",
+    "name:en": "kv. Madika",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 12292233785,
+  "lat": 42.4241218,
+  "lon": 27.5841164,
+  "tags": {
+    "name": "кв. Миньор",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "way",
+  "id": 333893451,
+  "bounds": {
+    "minlat": 42.4908297,
+    "minlon": 27.4364559,
+    "maxlat": 42.5201414,
+    "maxlon": 27.4635322
+  },
+  "nodes": [
+    3430123764,
+    3430123782,
+    3409380951,
+    3409380952,
+    290340482,
+    290340441,
+    290340741,
+    3409380953,
+    3409380954,
+    3409380955,
+    3409380956,
+    3409380957,
+    3409380959,
+    3409380960,
+    3409380961,
+    3409380962,
+    11024901561,
+    3409380963,
+    3409380966,
+    5521972610,
+    3409380967,
+    5521972841,
+    3409380968,
+    3409380975,
+    5521972836,
+    3409380977,
+    3409380979,
+    3409380980,
+    3409380982,
+    3409380985,
+    3409380987,
+    4301487374,
+    3409380988,
+    3410460014,
+    3409380984,
+    3409380983,
+    3409380981,
+    5339089581,
+    3409380978,
+    3409380976,
+    12688555477,
+    3409380974,
+    3410470574,
+    3410460011,
+    3409380971,
+    3409380970,
+    3409380969,
+    3410460010,
+    3409380958,
+    3409380950,
+    3409380949,
+    290347710,
+    3409380947,
+    3430123764
+  ],
+  "geometry": [
+    { "lat": 42.4908297, "lon": 27.4565243 },
+    { "lat": 42.4912137, "lon": 27.4563920 },
+    { "lat": 42.4913017, "lon": 27.4568630 },
+    { "lat": 42.4922652, "lon": 27.4565095 },
+    { "lat": 42.4924759, "lon": 27.4562370 },
+    { "lat": 42.4930835, "lon": 27.4552843 },
+    { "lat": 42.4932734, "lon": 27.4550268 },
+    { "lat": 42.4934488, "lon": 27.4547612 },
+    { "lat": 42.4938936, "lon": 27.4534726 },
+    { "lat": 42.4942069, "lon": 27.4529379 },
+    { "lat": 42.4944192, "lon": 27.4527323 },
+    { "lat": 42.4947730, "lon": 27.4525815 },
+    { "lat": 42.4950257, "lon": 27.4525952 },
+    { "lat": 42.4953391, "lon": 27.4528008 },
+    { "lat": 42.4961275, "lon": 27.4541443 },
+    { "lat": 42.4967239, "lon": 27.4560225 },
+    { "lat": 42.4968875, "lon": 27.4566050 },
+    { "lat": 42.4969415, "lon": 27.4567974 },
+    { "lat": 42.4990544, "lon": 27.4554103 },
+    { "lat": 42.5007753, "lon": 27.4543430 },
+    { "lat": 42.5024302, "lon": 27.4527341 },
+    { "lat": 42.5031859, "lon": 27.4517012 },
+    { "lat": 42.5039106, "lon": 27.4505787 },
+    { "lat": 42.5094129, "lon": 27.4419056 },
+    { "lat": 42.5098871, "lon": 27.4410974 },
+    { "lat": 42.5103084, "lon": 27.4402111 },
+    { "lat": 42.5108466, "lon": 27.4389683 },
+    { "lat": 42.5112764, "lon": 27.4374889 },
+    { "lat": 42.5116801, "lon": 27.4364559 },
+    { "lat": 42.5150672, "lon": 27.4384610 },
+    { "lat": 42.5165148, "lon": 27.4391924 },
+    { "lat": 42.5170149, "lon": 27.4377000 },
+    { "lat": 42.5185836, "lon": 27.4384885 },
+    { "lat": 42.5201414, "lon": 27.4398121 },
+    { "lat": 42.5156199, "lon": 27.4500449 },
+    { "lat": 42.5142404, "lon": 27.4488454 },
+    { "lat": 42.5116778, "lon": 27.4545522 },
+    { "lat": 42.5106926, "lon": 27.4566454 },
+    { "lat": 42.5095106, "lon": 27.4591451 },
+    { "lat": 42.5109099, "lon": 27.4602765 },
+    { "lat": 42.5101698, "lon": 27.4619096 },
+    { "lat": 42.5095246, "lon": 27.4635322 },
+    { "lat": 42.5068955, "lon": 27.4629076 },
+    { "lat": 42.5055491, "lon": 27.4625547 },
+    { "lat": 42.5052604, "lon": 27.4623987 },
+    { "lat": 42.5046929, "lon": 27.4620275 },
+    { "lat": 42.5031345, "lon": 27.4605885 },
+    { "lat": 42.5002214, "lon": 27.4573863 },
+    { "lat": 42.4949994, "lon": 27.4589651 },
+    { "lat": 42.4914549, "lon": 27.4593962 },
+    { "lat": 42.4914271, "lon": 27.4592578 },
+    { "lat": 42.4912987, "lon": 27.4587467 },
+    { "lat": 42.4911643, "lon": 27.4582022 },
+    { "lat": 42.4908297, "lon": 27.4565243 }
+  ],
+  "tags": {
+    "landuse": "industrial",
+    "layer": "-1",
+    "name": "Промишлена зона",
+    "place": "suburb"
+  }
+},
+{
+  "type": "relation",
+  "id": 18184325,
+  "bounds": {
+    "minlat": 42.5073135,
+    "minlon": 27.4649357,
+    "maxlat": 42.5096612,
+    "maxlon": 27.4673664
+  },
+  "members": [
+    {
+      "type": "way",
+      "ref": 334952952,
+      "role": "outer",
+      "geometry": [
+         { "lat": 42.5076688, "lon": 27.4649357 },
+         { "lat": 42.5073135, "lon": 27.4673368 },
+         { "lat": 42.5075731, "lon": 27.4672411 },
+         { "lat": 42.5079139, "lon": 27.4671063 },
+         { "lat": 42.5079815, "lon": 27.4673664 },
+         { "lat": 42.5088317, "lon": 27.4668143 },
+         { "lat": 42.5096612, "lon": 27.4660953 },
+         { "lat": 42.5095324, "lon": 27.4658516 },
+         { "lat": 42.5088966, "lon": 27.4657400 },
+         { "lat": 42.5088545, "lon": 27.4654969 },
+         { "lat": 42.5078879, "lon": 27.4652827 },
+         { "lat": 42.5079264, "lon": 27.4650006 },
+         { "lat": 42.5076688, "lon": 27.4649357 }
+      ]
+    },
+    {
+      "type": "node",
+      "ref": 7780273199,
+      "role": "admin_centre",
+      "lat": 42.5082282,
+      "lon": 27.4662033
+    }
+  ],
+  "tags": {
+    "boundary": "place",
+    "name": "кв. Работнически жилища",
+    "name:bg": "кв. Работнически жилища",
+    "name:en": "Rabotnicheski zhilishta",
+    "place": "neighbourhood",
+    "type": "boundary"
+  }
+}
+
+  ]
+}

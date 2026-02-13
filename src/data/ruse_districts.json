@@ -1,0 +1,667 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.10 2d4cfc48",
+  "osm3s": {
+    "timestamp_osm_base": "2026-02-12T23:54:15Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "node",
+  "id": 1576720468,
+  "lat": 43.8267258,
+  "lon": 25.9720696,
+  "tags": {
+    "addr:postcode": "7075",
+    "designation": "Русе",
+    "int_name": "zh.k. Druzhba 3",
+    "name": "ж.к. Дружба 3",
+    "name:ro": "Druzhba 3",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 1772996952,
+  "lat": 43.8311741,
+  "lon": 25.9655516,
+  "tags": {
+    "name": "ж.к. Дружба 1",
+    "name:en": "Friendship 1",
+    "name:ro": "Prietenia 1",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 1776978332,
+  "lat": 43.7970036,
+  "lon": 25.9312298,
+  "tags": {
+    "designation": "кв. Долапите",
+    "name": "кв. Долапите",
+    "name:ro": "Dolapite",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 1776979840,
+  "lat": 43.8067936,
+  "lon": 25.9370460,
+  "tags": {
+    "designation": "кв. Средна кула",
+    "int_name": "Average square tower",
+    "name": "кв. Средна кула",
+    "name:ro": "Piața Turnul Mediu",
+    "place": "suburb",
+    "population": "4470",
+    "source": "кв. Средна кула"
+  }
+},
+{
+  "type": "node",
+  "id": 2364621109,
+  "lat": 43.8487041,
+  "lon": 25.9534573,
+  "tags": {
+    "name": "Център",
+    "name:en": "Center",
+    "name:ro": "Centru",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2460786909,
+  "lat": 43.8319765,
+  "lon": 25.9774869,
+  "tags": {
+    "name": "ж.к. Чародейка - Юг",
+    "name:en": "Enchantress - South",
+    "name:ro": "Vrăjitoarea - Sud",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2461752971,
+  "lat": 43.8084686,
+  "lon": 26.0389035,
+  "tags": {
+    "name": "кв. Образцов чифлик",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2907714234,
+  "lat": 43.8298227,
+  "lon": 25.9553093,
+  "tags": {
+    "name": "кв. Дружба 2",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2908635292,
+  "lat": 43.8430267,
+  "lon": 25.9874882,
+  "tags": {
+    "name": "в.з. \"Христо Македонски\"",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 2908656448,
+  "lat": 43.8519779,
+  "lon": 26.0192898,
+  "tags": {
+    "name": "в.з. Кадъшева нива",
+    "name:en": "Kadisheva Field",
+    "name:ro": "Câmpul Kadișeva",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 2908660878,
+  "lat": 43.8301165,
+  "lon": 26.0162579,
+  "tags": {
+    "name": "в.з. Сафтабюлюк",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 2908663200,
+  "lat": 43.8451068,
+  "lon": 26.0041777,
+  "tags": {
+    "name": "в.з. Касева чешма",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 2908665529,
+  "lat": 43.8414945,
+  "lon": 25.9809650,
+  "tags": {
+    "name": "в.з. \"Кръста\"",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 2908667610,
+  "lat": 43.8345761,
+  "lon": 25.9957065,
+  "tags": {
+    "name": "в.з. Хайдук дере",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 2908667713,
+  "lat": 43.8388635,
+  "lon": 25.9873809,
+  "tags": {
+    "name": "в.з. Долни Ростов",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 2908668278,
+  "lat": 43.8190561,
+  "lon": 25.9614417,
+  "tags": {
+    "name": "Вилна Зона Запад",
+    "name:en": "West Villa Area",
+    "name:ro": "Zona de vile Vest",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 2918433073,
+  "lat": 43.8369635,
+  "lon": 25.9726931,
+  "tags": {
+    "name": "ж.к. Чародейка - Север",
+    "name:en": "Enchantress - North",
+    "name:ro": "Vrăjitoarea - Nord",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2991103751,
+  "lat": 43.8308134,
+  "lon": 25.9483208,
+  "tags": {
+    "name": "кв. Новата махала",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2991133426,
+  "lat": 43.8346151,
+  "lon": 25.9486872,
+  "tags": {
+    "name": "кв. Веждата",
+    "name:en": "Eyebrow",
+    "name:ro": "Sprânceană",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2991135342,
+  "lat": 43.8353013,
+  "lon": 25.9419630,
+  "tags": {
+    "name": "кв. Сарая",
+    "name:en": "Saraya",
+    "name:ro": "Sarai",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2991138617,
+  "lat": 43.8431987,
+  "lon": 25.9575553,
+  "tags": {
+    "name": "ж. к. Хъшове",
+    "name:ro": "Proscriși",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2991138618,
+  "lat": 43.8379599,
+  "lon": 25.9586243,
+  "tags": {
+    "name": "ж.к. Централен южен район",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2991149389,
+  "lat": 43.8335120,
+  "lon": 25.9519440,
+  "tags": {
+    "name": "ж.к. Мидия-Енос",
+    "name:en": "Midiya-Enos",
+    "name:ro": "Midia-Enos",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2991153626,
+  "lat": 43.8541202,
+  "lon": 25.9727478,
+  "tags": {
+    "name": "Студентски град",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 3051804448,
+  "lat": 43.8442988,
+  "lon": 25.9481881,
+  "tags": {
+    "name": "Старият център",
+    "name:en": "Old Center",
+    "name:ro": "Centrul Vechi",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 3078052764,
+  "lat": 43.8570820,
+  "lon": 25.9673081,
+  "tags": {
+    "name": "ж.к. Възраждане",
+    "name:en": "Renaissance",
+    "name:ro": "Renașterea",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 3085068466,
+  "lat": 43.8643889,
+  "lon": 25.9862451,
+  "tags": {
+    "name": "ж.к. Тракция",
+    "name:en": "Traction",
+    "name:ro": "Tracțiune",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 3131746126,
+  "lat": 43.8355836,
+  "lon": 25.9620306,
+  "tags": {
+    "name": "кв. Родина 4",
+    "name:ro": "Patria 4",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 3131765868,
+  "lat": 43.8393795,
+  "lon": 25.9656416,
+  "tags": {
+    "name": "ж.к. Родина 3",
+    "name:ro": "Patria 3",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 3131776466,
+  "lat": 43.8428458,
+  "lon": 25.9717396,
+  "tags": {
+    "name": "ж.к. Родина 2",
+    "name:ro": "Patria 2",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 3131776467,
+  "lat": 43.8468451,
+  "lon": 25.9714469,
+  "tags": {
+    "name": "ж.к. Родина 1",
+    "name:ro": "Patria 1",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 3131779009,
+  "lat": 43.8502917,
+  "lon": 25.9928554,
+  "tags": {
+    "name": "ж.к. Здравец-изток",
+    "name:ro": "zh.k. Zdravets-iztok",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 3131779897,
+  "lat": 43.8470395,
+  "lon": 25.9804882,
+  "tags": {
+    "name": "ж.к. Здравец",
+    "name:en": "Geranium",
+    "name:ro": "Mușcată",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 3139337553,
+  "lat": 43.8223500,
+  "lon": 25.9814555,
+  "tags": {
+    "name": "в.з. Лозята",
+    "name:en": "The Vineyards",
+    "name:ro": "Viile",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 3206344566,
+  "lat": 43.8493348,
+  "lon": 25.9641603,
+  "tags": {
+    "name": "кв.Ялта",
+    "name:ro": "Yalta",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 3530867640,
+  "lat": 43.8515939,
+  "lon": 25.9486538,
+  "tags": {
+    "name": "Кеят",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 3765260695,
+  "lat": 43.8519706,
+  "lon": 25.9679317,
+  "tags": {
+    "name": "ж.к. Възраждане - Юг",
+    "name:en": "Renaissance South",
+    "name:ro": "Renașterea Sud",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 3765269286,
+  "lat": 43.8603833,
+  "lon": 25.9748317,
+  "tags": {
+    "name": "ж.к. Възраждане - Североизток",
+    "name:en": "Renaissance North",
+    "name:ro": "Renașterea Nord",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 3765270067,
+  "lat": 43.8601176,
+  "lon": 25.9795430,
+  "tags": {
+    "name": "ж.к. Цветница",
+    "name:en": "Palm Sunday",
+    "name:ro": "Duminica Floriilor",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 3765273266,
+  "lat": 43.8287546,
+  "lon": 25.9593004,
+  "tags": {
+    "name": "ж.к. Дружба 2",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 3765287163,
+  "lat": 43.8131352,
+  "lon": 25.9777201,
+  "tags": {
+    "name": "в.з. Русофили",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 4356487054,
+  "lat": 43.8521982,
+  "lon": 25.9778862,
+  "tags": {
+    "name": "ж.к. Здравец-север 1",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 4356487055,
+  "lat": 43.8529605,
+  "lon": 25.9856431,
+  "tags": {
+    "name": "ж.к. Здравец-север 2",
+    "name:ro": "zh.k. Zdravets-sever 2",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 4356501379,
+  "lat": 43.8535469,
+  "lon": 25.9821975,
+  "tags": {
+    "name": "ж.к. Здравец-север",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 4872547630,
+  "lat": 43.8015808,
+  "lon": 25.9575235,
+  "tags": {
+    "name": "Средния път",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 4872547631,
+  "lat": 43.8101908,
+  "lon": 25.9546482,
+  "tags": {
+    "name": "в.з. Средна кула",
+    "name:ro": "v.z. Sredna kula",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 5200551817,
+  "lat": 43.8679447,
+  "lon": 25.9941843,
+  "tags": {
+    "name": "ж.к. Захарна фабрика",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 6695539997,
+  "lat": 43.8400116,
+  "lon": 25.9485958,
+  "tags": {
+    "description": "Обхваща голям район от южната час на стария Русчук",
+    "name": "Широк Център",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 8494947996,
+  "lat": 43.7826208,
+  "lon": 26.0176098,
+  "tags": {
+    "name": "ДЗС",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 8602223307,
+  "lat": 43.8113164,
+  "lon": 25.9377390,
+  "tags": {
+    "name": "кв. Средна кула",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 8602238286,
+  "lat": 43.8729162,
+  "lon": 26.0345614,
+  "tags": {
+    "name": "кв. Слатина",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 8815158358,
+  "lat": 43.8844953,
+  "lon": 25.9493873,
+  "tags": {
+    "name": "Istru",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 8815158359,
+  "lat": 43.8983985,
+  "lon": 25.9574407,
+  "tags": {
+    "name": "Bâlciului",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 8815158360,
+  "lat": 43.9090816,
+  "lon": 25.9740382,
+  "tags": {
+    "name": "Cartierul Tineretului",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 8815158361,
+  "lat": 43.9034243,
+  "lon": 25.9684297,
+  "tags": {
+    "name": "Daciei",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 8815158362,
+  "lat": 43.9225487,
+  "lon": 25.9732443,
+  "tags": {
+    "name": "Giurgiu Nord",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 12760063069,
+  "lat": 43.9027315,
+  "lon": 25.9590025,
+  "tags": {
+    "name": "Obor",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 13087745538,
+  "lat": 43.9052743,
+  "lon": 25.9804770,
+  "tags": {
+    "name": "Oinac",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 13088510074,
+  "lat": 43.8946112,
+  "lon": 25.9779326,
+  "tags": {
+    "name": "Cartierul Fabricii de Zahăr",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 13088510075,
+  "lat": 43.8959934,
+  "lon": 25.9744628,
+  "tags": {
+    "name": "Smârda",
+    "place": "suburb"
+  }
+}
+
+  ]
+}

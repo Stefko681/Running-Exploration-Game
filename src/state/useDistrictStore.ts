@@ -1,22 +1,20 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { OSMDistrict, OverpassService } from '../services/OverpassService';
+import type { OSMDistrict } from '../services/DistrictService';
 
 interface DistrictState {
-    unlockedDistricts: string[]; // List of relation IDs (as strings)
-
-    // Dynamic Data
-    districts: OSMDistrict[];
-    isLoading: boolean;
-    lastFetchCoords: { lat: number; lng: number } | null;
+    unlockedDistricts: string[]; // List of relation IDs
+    districts: OSMDistrict[]; // Fetched district boundaries
+    isLoading: boolean; // True while fetching districts
+    error: string | null; // Error message if fetch failed
+    lastFetchLocation: { lat: number; lon: number } | null; // Track last fetch location
 
     unlockDistrict: (id: string) => void;
     isUnlocked: (id: string) => boolean;
+    setDistricts: (districts: OSMDistrict[], location: { lat: number; lon: number }) => void;
+    setLoading: (loading: boolean) => void;
+    setError: (error: string | null) => void;
     resetDistricts: () => void;
-
-    // Actions
-    setDistricts: (districts: OSMDistrict[]) => void;
-    fetchDistrictsIfNeeded: (lat: number, lng: number) => Promise<void>;
 }
 
 export const useDistrictStore = create<DistrictState>()(
@@ -25,7 +23,8 @@ export const useDistrictStore = create<DistrictState>()(
             unlockedDistricts: [],
             districts: [],
             isLoading: false,
-            lastFetchCoords: null,
+            error: null,
+            lastFetchLocation: null,
 
             unlockDistrict: (id: string) => {
                 const current = get().unlockedDistricts;
@@ -38,62 +37,35 @@ export const useDistrictStore = create<DistrictState>()(
                 return get().unlockedDistricts.includes(id);
             },
 
-            resetDistricts: () => {
-                set({ unlockedDistricts: [] });
+            setDistricts: (districts: OSMDistrict[], location: { lat: number; lon: number }) => {
+                set({
+                    districts,
+                    lastFetchLocation: location,
+                    error: null,
+                    isLoading: false
+                });
             },
 
-            setDistricts: (districts) => set({ districts }),
+            setLoading: (loading: boolean) => {
+                set({ isLoading: loading });
+            },
 
-            fetchDistrictsIfNeeded: async (lat, lng) => {
-                const state = get();
+            setError: (error: string | null) => {
+                set({ error, isLoading: false });
+            },
 
-                // Check if we need to fetch
-                // 1. If we have no districts
-                // 2. If we moved significantly from last fetch (e.g. > 5km)
-                // Simple distance check
-                const last = state.lastFetchCoords;
-                let shouldFetch = false;
-
-                if (state.districts.length === 0 || !last) {
-                    shouldFetch = true;
-                } else {
-                    const dist = Math.sqrt(Math.pow(lat - last.lat, 2) + Math.pow(lng - last.lng, 2));
-                    // 1 degree approx 111km. 5km is approx 0.045 deg
-                    if (dist > 0.045) {
-                        shouldFetch = true;
-                    }
-                }
-
-                if (!shouldFetch) return;
-
-                // Prevent duplicate fetches if already loading?
-                // Actually isLoading acts as a UI spinner, but we might want a 'isFetching' flag for debounce logic
-                // For now simple:
-
-                set({ isLoading: true });
-                try {
-                    const newDistricts = await OverpassService.fetchDistricts(lat, lng);
-                    if (newDistricts.length > 0) {
-                        // Merge or Replace? 
-                        // Replacing is safer to avoid memory bloat, but might lose "unlocked" visuals if you go back.
-                        // However, unlocked IDs are persisted separately.
-                        // Let's replace for now to keep it scoped to current area.
-                        set({ districts: newDistricts, lastFetchCoords: { lat, lng } });
-                    }
-                } finally {
-                    set({ isLoading: false });
-                }
+            resetDistricts: () => {
+                set({
+                    unlockedDistricts: [],
+                    districts: [],
+                    lastFetchLocation: null,
+                    error: null
+                });
             }
         }),
         {
             name: 'district-storage',
             storage: createJSONStorage(() => localStorage),
-            partialize: (state) => ({
-                unlockedDistricts: state.unlockedDistricts,
-                // We persist districts too so they load offline/restore quickly
-                districts: state.districts,
-                lastFetchCoords: state.lastFetchCoords
-            }),
         }
     )
 );

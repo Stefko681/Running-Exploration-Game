@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, X } from "lucide-react";
 import { OnboardingOverlay } from "./components/OnboardingOverlay";
-import { InstallPrompt } from "./components/InstallPrompt";
+
 import { AchievementToast } from "./components/AchievementToast";
 import { HistoryScreen } from "./screens/HistoryScreen";
 import { MapScreen } from "./screens/MapScreen";
@@ -113,7 +113,7 @@ export default function App() {
       )}
 
       <OnboardingOverlay />
-      <InstallPrompt />
+
       <AchievementToast />
     </>
   );

@@ -1,0 +1,362 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.10 2d4cfc48",
+  "osm3s": {
+    "timestamp_osm_base": "2026-02-12T23:54:15Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "node",
+  "id": 668789324,
+  "lat": 42.4562336,
+  "lon": 25.5946949,
+  "tags": {
+    "name": "кв. Дъбрава",
+    "name:bg": "кв. Дъбрава",
+    "name:en": "kv. Dabrava",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 847060440,
+  "lat": 42.4259316,
+  "lon": 25.5990970,
+  "tags": {
+    "name": "кв. Три чучура - Север",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 847060441,
+  "lat": 42.4137511,
+  "lon": 25.5936904,
+  "tags": {
+    "name": "кв. Железник",
+    "name:bg": "кв. Железник",
+    "name:en": "kv. Zheleznik",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 847060443,
+  "lat": 42.4179489,
+  "lon": 25.6148522,
+  "tags": {
+    "int_name": "kv. Kazanski",
+    "name": "кв. Казански",
+    "name:bg": "кв. Казански",
+    "name:en": "kv. Kazanski",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 847060444,
+  "lat": 42.3980251,
+  "lon": 25.6423414,
+  "tags": {
+    "name": "кв. Кольо Ганчев",
+    "name:bg": "кв. Кольо Ганчев",
+    "name:en": "kv. Kolyo Gantchev",
+    "old_name:bg": "кв. Колю Ганчев",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 847060445,
+  "lat": 42.4157016,
+  "lon": 25.6075160,
+  "tags": {
+    "name": "кв. Три чучура - Юг",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 847060446,
+  "lat": 42.4293300,
+  "lon": 25.6532706,
+  "tags": {
+    "name": "кв. Самара 1",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 847060447,
+  "lat": 42.4194009,
+  "lon": 25.6049500,
+  "tags": {
+    "name": "кв. Три чучура",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 847060448,
+  "lat": 42.4303771,
+  "lon": 25.6038381,
+  "tags": {
+    "name": "кв. Лозенец",
+    "name:bg": "кв. Лозенец",
+    "name:en": "kv. Lozenets",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 847060451,
+  "lat": 42.4341833,
+  "lon": 25.6447641,
+  "tags": {
+    "name": "кв. Самара 3",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 847060452,
+  "lat": 42.4308727,
+  "lon": 25.6470910,
+  "tags": {
+    "name": "кв. Самара 2",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 892120776,
+  "lat": 42.4264867,
+  "lon": 25.6360101,
+  "tags": {
+    "name": "ж.к. Орбита",
+    "name:bg": "ж.к. Орбита",
+    "name:en": "zh.k. Orbita",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 899068060,
+  "lat": 42.4266716,
+  "lon": 25.6866979,
+  "tags": {
+    "name": "кв. Зора",
+    "name:bg": "кв. Зора",
+    "name:en": "kv. Zora",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 1189997632,
+  "lat": 42.4168552,
+  "lon": 25.5570341,
+  "tags": {
+    "name": "в.з. Седми километър",
+    "name:bg": "в.з. Седми километър",
+    "name:en": "v.z. Sedmi kilometar",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 1189997648,
+  "lat": 42.4007494,
+  "lon": 25.5709055,
+  "tags": {
+    "name": "Студентски град",
+    "name:bg": "Студентски град",
+    "name:en": "Studentski grad",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 1189997651,
+  "lat": 42.4053487,
+  "lon": 25.5717285,
+  "tags": {
+    "name": "кв. Атюрен",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 1189997656,
+  "lat": 42.4538544,
+  "lon": 25.6431721,
+  "tags": {
+    "name": "в.з. Баритна мина",
+    "name:bg": "в.з. Баритна мина",
+    "name:en": "v.z. Bartna mina",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 1311504476,
+  "lat": 42.4267129,
+  "lon": 25.6202368,
+  "tags": {
+    "name": "кв. Възраждане",
+    "name:bg": "кв. Възраждане",
+    "name:en": "kv. Vazrazhdane",
+    "place": "suburb",
+    "source": "cadastre"
+  }
+},
+{
+  "type": "node",
+  "id": 1311504481,
+  "lat": 42.4321079,
+  "lon": 25.6295470,
+  "tags": {
+    "name": "кв. Васил Левски",
+    "name:bg": "кв. Васил Левски",
+    "name:en": "kv. Vasil Levski",
+    "place": "suburb",
+    "source": "cadastre"
+  }
+},
+{
+  "type": "node",
+  "id": 1311504482,
+  "lat": 42.4210637,
+  "lon": 25.6224844,
+  "tags": {
+    "name": "кв. Славейков",
+    "name:bg": "кв. Славейков",
+    "name:en": "kv. Slaveykov",
+    "place": "suburb",
+    "source": "cadastre"
+  }
+},
+{
+  "type": "node",
+  "id": 1311504483,
+  "lat": 42.4286943,
+  "lon": 25.6135529,
+  "tags": {
+    "name": "кв. Македонски",
+    "name:bg": "кв. Македонски",
+    "name:en": "kv. Makedonski",
+    "place": "suburb",
+    "source": "cadastre"
+  }
+},
+{
+  "type": "node",
+  "id": 1311504492,
+  "lat": 42.4346180,
+  "lon": 25.6343345,
+  "tags": {
+    "name": "кв. Бедечка - Градински",
+    "name:bg": "кв. Бедечка - Градински",
+    "name:en": "kv. Bedechka - Gradinski",
+    "place": "suburb",
+    "source": "cadastre"
+  }
+},
+{
+  "type": "node",
+  "id": 1311504493,
+  "lat": 42.4163235,
+  "lon": 25.6453049,
+  "tags": {
+    "name": "кв. Индустрия - изток",
+    "name:bg": "кв. Индустрия - изток",
+    "name:en": "kv. Industriya - iztok",
+    "old_name:bg": "Индустриална зона - изток",
+    "old_name:en": "Industrialna zona - iztok",
+    "place": "neighbourhood",
+    "source": "cadastre"
+  }
+},
+{
+  "type": "node",
+  "id": 1311504494,
+  "lat": 42.4245798,
+  "lon": 25.6418225,
+  "tags": {
+    "name": "кв. Опълченски",
+    "name:bg": "кв. Опълченски",
+    "name:en": "kv. Opalchenski",
+    "place": "suburb",
+    "source": "cadastre"
+  }
+},
+{
+  "type": "node",
+  "id": 1311504502,
+  "lat": 42.4261544,
+  "lon": 25.6315927,
+  "tags": {
+    "name": "кв. Централна градска част",
+    "name:bg": "кв. Централна градска част",
+    "name:en": "kv. Tsentralna gradska chast",
+    "place": "suburb",
+    "source": "cadastre"
+  }
+},
+{
+  "type": "node",
+  "id": 1311504503,
+  "lat": 42.4220216,
+  "lon": 25.6318292,
+  "tags": {
+    "name": "кв. Гео Милев",
+    "name:bg": "кв. Гео Милев",
+    "name:en": "kv. Geo Milev",
+    "place": "suburb",
+    "source": "cadastre"
+  }
+},
+{
+  "type": "node",
+  "id": 1311504504,
+  "lat": 42.4114470,
+  "lon": 25.6301960,
+  "tags": {
+    "name": "кв. Индустрия - запад",
+    "name:bg": "кв. Индустрия - запад",
+    "name:en": "kv. Industriya - zapad",
+    "old_name:bg": "Индустриална зона - запад",
+    "old_name:en": "Industrialna zona - zapad",
+    "place": "neighbourhood",
+    "source": "cadastre"
+  }
+},
+{
+  "type": "node",
+  "id": 7906069615,
+  "lat": 42.4080916,
+  "lon": 25.6427203,
+  "tags": {
+    "name": "кв. АПК",
+    "name:bg": "кв. АПК",
+    "name:en": "kv. APK",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 7906083898,
+  "lat": 42.4148256,
+  "lon": 25.6382807,
+  "tags": {
+    "name": "кв. Индустриален",
+    "name:bg": "кв. Индустриален",
+    "name:en": "kv. Industrialen",
+    "place": "suburb"
+  }
+}
+
+  ]
+}

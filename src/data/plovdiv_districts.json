@@ -1,0 +1,217 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.10 2d4cfc48",
+  "osm3s": {
+    "timestamp_osm_base": "2026-02-12T23:54:15Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "node",
+  "id": 3128284167,
+  "lat": 42.5750609,
+  "lon": 24.8740057,
+  "tags": {
+    "name": "ж.к.Север",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 4253016982,
+  "lat": 42.6509845,
+  "lon": 24.8027143,
+  "tags": {
+    "name": "кв. Бадемлика",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 8602131270,
+  "lat": 42.8363445,
+  "lon": 24.9211877,
+  "tags": {
+    "int_name": "kv. Novo selo",
+    "name": "Ново Село",
+    "name:en": "Novo Selo",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 9656359555,
+  "lat": 42.8332681,
+  "lon": 25.0028906,
+  "tags": {
+    "name": "Салаците",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 9656359556,
+  "lat": 42.8322974,
+  "lon": 25.0081075,
+  "tags": {
+    "name": "Пехливаните",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 9656359557,
+  "lat": 42.8290790,
+  "lon": 25.0065273,
+  "tags": {
+    "name": "Джаблиите",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 9656359558,
+  "lat": 42.8293161,
+  "lon": 25.0017390,
+  "tags": {
+    "name": "Иванковци",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 9862837838,
+  "lat": 42.8338073,
+  "lon": 24.8858732,
+  "tags": {
+    "name": "Йотовци",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 9862837839,
+  "lat": 42.8379338,
+  "lon": 24.8571736,
+  "tags": {
+    "name": "Сяровци",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 10293282431,
+  "lat": 42.8292468,
+  "lon": 24.9674634,
+  "tags": {
+    "int_name": "Bogolonta",
+    "name": "Боголонта",
+    "name:bg": "Боголонта",
+    "name:en": "Bogolonta",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 10671195209,
+  "lat": 42.6349146,
+  "lon": 24.8382428,
+  "tags": {
+    "name": "кв. Сушица",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "node",
+  "id": 11778104301,
+  "lat": 42.8193563,
+  "lon": 24.9495704,
+  "tags": {
+    "int_name": "kv. Ostrets",
+    "name": "кв. Острец",
+    "name:bg": "кв. Острец",
+    "name:en": "Ostrets",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 12986472027,
+  "lat": 42.8404726,
+  "lon": 24.9189110,
+  "tags": {
+    "name": "Априлци Център",
+    "name:en": "Apriltsi Town Centre",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 12992711256,
+  "lat": 42.8128654,
+  "lon": 24.9104659,
+  "tags": {
+    "name": "кв. Видима",
+    "name:en": "Vidima",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 12992711257,
+  "lat": 42.8314571,
+  "lon": 24.9023075,
+  "tags": {
+    "name": "Барахарите",
+    "name:en": "Baraharite",
+    "place": "neighbourhood"
+  }
+},
+{
+  "type": "way",
+  "id": 1075408101,
+  "bounds": {
+    "minlat": 42.8487582,
+    "minlon": 24.8732775,
+    "maxlat": 42.8510667,
+    "maxlon": 24.8757291
+  },
+  "nodes": [
+    9862837851,
+    9862837850,
+    9862837849,
+    9862837848,
+    9862837847,
+    9862837846,
+    9862837845,
+    9862837844,
+    9862837843,
+    9862837842,
+    9862837841,
+    9862837840,
+    9862837851
+  ],
+  "geometry": [
+    { "lat": 42.8498436, "lon": 24.8739856 },
+    { "lat": 42.8506302, "lon": 24.8745114 },
+    { "lat": 42.8509016, "lon": 24.8749727 },
+    { "lat": 42.8510667, "lon": 24.8754287 },
+    { "lat": 42.8509134, "lon": 24.8757291 },
+    { "lat": 42.8502448, "lon": 24.8753107 },
+    { "lat": 42.8496470, "lon": 24.8745704 },
+    { "lat": 42.8493009, "lon": 24.8740876 },
+    { "lat": 42.8487582, "lon": 24.8736477 },
+    { "lat": 42.8489233, "lon": 24.8732883 },
+    { "lat": 42.8492694, "lon": 24.8732775 },
+    { "lat": 42.8495998, "lon": 24.8736852 },
+    { "lat": 42.8498436, "lon": 24.8739856 }
+  ],
+  "tags": {
+    "name": "Иванджиите",
+    "place": "suburb"
+  }
+}
+
+  ]
+}
