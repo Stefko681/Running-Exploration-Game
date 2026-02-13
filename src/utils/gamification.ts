@@ -1,4 +1,4 @@
-import { LucideIcon, Map, Compass, Mountain, Flag, Crown } from "lucide-react";
+import { LucideIcon, Map, Compass, Mountain, Flag, Crown, Footprints, Shield, Swords, Award, Star } from "lucide-react";
 
 export type Rank = {
     id: string;
@@ -10,10 +10,15 @@ export type Rank = {
 
 export const RANKS: Rank[] = [
     { id: "scout", title: "Scout", minMeters: 0, icon: Compass, color: "text-slate-400" },
-    { id: "runner", title: "Runner", minMeters: 10_000, icon: Map, color: "text-emerald-400" },
+    { id: "runner", title: "Runner", minMeters: 10_000, icon: Footprints, color: "text-emerald-400" },
     { id: "pathfinder", title: "Pathfinder", minMeters: 50_000, icon: Mountain, color: "text-cyan-400" },
-    { id: "cartographer", title: "Cartographer", minMeters: 100_000, icon: Flag, color: "text-violet-400" },
-    { id: "legend", title: "Legend", minMeters: 500_000, icon: Crown, color: "text-amber-400" }
+    { id: "cartographer", title: "Cartographer", minMeters: 100_000, icon: Map, color: "text-violet-400" },
+    { id: "trailblazer", title: "Trailblazer", minMeters: 250_000, icon: Flag, color: "text-orange-400" },
+    { id: "veteran", title: "Veteran", minMeters: 500_000, icon: Shield, color: "text-rose-400" },
+    { id: "elite", title: "Elite", minMeters: 1_000_000, icon: Swords, color: "text-red-400" },
+    { id: "master", title: "Master", minMeters: 2_500_000, icon: Award, color: "text-yellow-400" },
+    { id: "champion", title: "Champion", minMeters: 5_000_000, icon: Star, color: "text-cyan-300" },
+    { id: "legend", title: "Legend", minMeters: 10_000_000, icon: Crown, color: "text-amber-400" }
 ];
 
 export function getRank(totalMeters: number) {

@@ -3,7 +3,8 @@ import { ThemeId, useThemeStore } from "../state/useThemeStore";
 const THEMES: { id: ThemeId; label: string; color: string }[] = [
     { id: "cyberpunk", label: "Cyberpunk", color: "#22d3ee" },
     { id: "matrix", label: "Matrix", color: "#22c55e" },
-    { id: "vaporwave", label: "Vaporwave", color: "#f472b6" }
+    { id: "vaporwave", label: "Vaporwave", color: "#f472b6" },
+    { id: "daylight", label: "Daylight", color: "#2563eb" },
 ];
 
 export function ThemeSelector() {
@@ -15,7 +16,7 @@ export function ThemeSelector() {
             <div className="mb-2 text-[11px] uppercase tracking-[0.16em] text-slate-500">
                 Visual Theme
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
                 {THEMES.map((t) => {
                     const active = currentTheme === t.id;
                     return (
@@ -23,8 +24,8 @@ export function ThemeSelector() {
                             key={t.id}
                             onClick={() => setTheme(t.id)}
                             className={`relative flex flex-col items-center justify-center gap-1 overflow-hidden rounded-xl border border-slate-800 bg-slate-900/50 py-2 transition-all ${active
-                                    ? "ring-2 ring-app-accent ring-offset-1 ring-offset-slate-950"
-                                    : "hover:bg-slate-800"
+                                ? "ring-2 ring-app-accent ring-offset-1 ring-offset-slate-950"
+                                : "hover:bg-slate-800"
                                 }`}
                         >
                             <div

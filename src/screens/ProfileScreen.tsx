@@ -1,5 +1,5 @@
 import { useRunStore } from "../state/useRunStore";
-import { getRank } from "../utils/gamification";
+import { getRank, RANKS } from "../utils/gamification";
 import { ACHIEVEMENTS, AchievementCategory } from "../utils/achievements";
 import { Share2, ChevronDown, ChevronUp, CheckCircle2, RefreshCw, Flame, Clock } from "lucide-react";
 import { useState, useMemo } from "react";
@@ -9,6 +9,11 @@ import { useLeaderboardStore } from "../state/useLeaderboardStore";
 import { IdentityEditor } from "../components/IdentityEditor";
 import { getBadge } from "../utils/badges";
 import { ThemeSelector } from "../components/ThemeSelector";
+import { useDistrictStore } from "../state/useDistrictStore";
+import { useSettingsStore } from "../state/useSettingsStore";
+import { AuthScreen } from "./AuthScreen";
+import { LogOut, User as UserIcon } from "lucide-react";
+import { supabase } from "../services/supabase";
 
 // Categories config with labels and colors
 const CATEGORIES: { id: AchievementCategory | "all"; label: string; color: string }[] = [
@@ -22,8 +27,10 @@ const CATEGORIES: { id: AchievementCategory | "all"; label: string; color: strin
 ];
 
 export function ProfileScreen() {
-    const { runs, revealed, achievements, currentStreak } = useRunStore();
-    const { username, isGuest } = useLeaderboardStore();
+    const { runs, revealed, achievements, currentStreak, bestStreak, supplyDrops, hasStreakShield } = useRunStore();
+    const { username, isGuest, user } = useLeaderboardStore();
+    const { unlockedDistricts, districts } = useDistrictStore();
+    const { weightKg, setWeightKg } = useSettingsStore();
 
     const totalDistance = runs.reduce((acc, r) => acc + r.distanceMeters, 0);
     const rank = getRank(totalDistance);
@@ -33,11 +40,21 @@ export function ProfileScreen() {
     const [activeTab, setActiveTab] = useState<AchievementCategory | "all">("all");
     const [isReverseSort, setIsReverseSort] = useState(false);
     const [showIdentityEditor, setShowIdentityEditor] = useState(false);
+    const [showRankDetails, setShowRankDetails] = useState(false);
+    const [showAuth, setShowAuth] = useState(false);
+
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
+    };
 
     // Derived stats
     const totalRuns = runs.filter(r => r.distanceMeters > 50).length;
     const exploredCount = revealed.length;
-    const totalTimeMs = runs.reduce((acc, r) => acc + (r.endedAt - r.startedAt), 0);
+    const totalTimeMs = runs.reduce((acc, r) => {
+        const duration = r.endedAt - r.startedAt;
+        const paused = r.pausedDuration || 0;
+        return acc + Math.max(0, duration - paused);
+    }, 0);
     const totalTimeHours = (totalTimeMs / 3600000).toFixed(1);
 
     // Build achievement stats for progress tracking
@@ -46,8 +63,10 @@ export function ProfileScreen() {
         totalRuns: totalRuns,
         totalRevealed: exploredCount,
         currentStreak: currentStreak,
-        totalSupplyDrops: 0, // Not easily available here, but milestone tracking still works
-    }), [totalDistance, totalRuns, exploredCount, currentStreak]);
+        totalSupplyDrops: supplyDrops.filter(d => d.collected).length,
+        unlockedDistricts: unlockedDistricts.length,
+        totalDistricts: districts.length,
+    }), [totalDistance, totalRuns, exploredCount, currentStreak, supplyDrops, unlockedDistricts, districts]);
 
     // Filter and Sort Achievements
     const filteredAchievements = useMemo(() => {
@@ -89,25 +108,57 @@ export function ProfileScreen() {
         return stats;
     }, [achievements]);
 
+
+
     return (
         <div className="h-full overflow-y-auto bg-slate-950 pb-24 animate-in fade-in duration-500">
 
             {/* Header Area */}
             <div className="p-4 pb-0">
-                <h1 className="text-3xl font-black uppercase tracking-tighter italic text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
-                    {isGuest ? "Operator Profile" : `Operator: ${username}`}
-                </h1>
-                <div className="flex items-center justify-between mt-1 mb-6">
-                    <div className="flex items-center gap-2 text-xs font-mono text-slate-500">
-                        <span>ID: OP-{totalRuns.toString().padStart(4, '0')}</span>
-                        <span>•</span>
-                        <span>VER: 4.2.0</span>
+                <div className="flex items-start justify-between">
+                    <div>
+                        <h1 className="text-3xl font-black uppercase tracking-tighter italic text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
+                            {isGuest ? "Operator Profile" : `Operator: ${username}`}
+                        </h1>
+                        <div className="flex items-center gap-2 mt-1 mb-4">
+                            <div className="flex items-center gap-2 text-xs font-mono text-slate-500">
+                                <span>ID: {isGuest ? "GUEST" : "OP-" + (user?.id.substring(0, 4).toUpperCase())}</span>
+                                <span>•</span>
+                                <span>VER: 4.2.0</span>
+                            </div>
+                        </div>
+
+                        {/* Auth Actions */}
+                        <div className="mb-6">
+                            {isGuest ? (
+                                <button
+                                    onClick={() => setShowAuth(true)}
+                                    className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-cyan-900/20 transition-all active:scale-95"
+                                >
+                                    <UserIcon size={16} />
+                                    Login / Sync Progress
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleLogout}
+                                    className="flex items-center gap-2 bg-slate-800 hover:bg-red-900/30 text-slate-400 hover:text-red-400 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border border-slate-700 hover:border-red-500/30"
+                                >
+                                    <LogOut size={14} />
+                                    Logout
+                                </button>
+                            )}
+                        </div>
                     </div>
                     <ThemeSelector />
                 </div>
 
-                {/* Rank Card */}
-                <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-slate-900/50 p-6 backdrop-blur-md mb-6 shadow-xl">
+
+
+                {/* Rank Card — clickable to expand */}
+                <div
+                    className="relative overflow-hidden rounded-2xl border border-white/10 bg-slate-900/50 p-6 backdrop-blur-md mb-6 shadow-xl cursor-pointer transition-all active:scale-[0.99]"
+                    onClick={() => setShowRankDetails(v => !v)}
+                >
                     <div className={`absolute -right-4 -top-4 opacity-20 ${rank.current.color}`}>
                         <rank.current.icon size={120} />
                     </div>
@@ -123,15 +174,14 @@ export function ProfileScreen() {
                                 />
                                 {/* Reroll Button */}
                                 <button
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                        e.stopPropagation();
                                         const newSeed = Math.random().toString(36).substring(7);
                                         useLeaderboardStore.getState().setAvatarSeed(newSeed);
-                                        // Trigger sync if registered
-                                        const { isGuest, username } = useLeaderboardStore.getState();
-                                        if (!isGuest && localStorage.getItem("cityquest_user_id")) {
-                                            const id = localStorage.getItem("cityquest_user_id")!;
+                                        const { isGuest } = useLeaderboardStore.getState();
+                                        if (!isGuest) {
                                             // Optimistic update handled by store state, next uploadMyScore will persist
-                                            useLeaderboardStore.getState().uploadMyScore(id, username, 0, 0); // Trigger sync
+                                            useLeaderboardStore.getState().uploadMyScore(0, 0); // Trigger sync
                                         }
                                     }}
                                     className="absolute inset-0 bg-black/40 flex items-center justify-center cursor-pointer active:bg-black/60 transition-colors"
@@ -139,10 +189,11 @@ export function ProfileScreen() {
                                     <RefreshCw size={20} className="text-white/70 drop-shadow-md" />
                                 </button>
                             </div>
-                            <div>
+                            <div className="flex-1">
                                 <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Current Rank</div>
                                 <div className="text-2xl font-black uppercase text-white">{rank.current.title}</div>
                             </div>
+                            <ChevronDown size={18} className={`text-slate-500 transition-transform duration-300 ${showRankDetails ? 'rotate-180' : ''}`} />
                         </div>
 
                         {/* Progress Bar */}
@@ -160,6 +211,75 @@ export function ProfileScreen() {
                         </div>
                     </div>
                 </div>
+
+                {/* Rank Progression Details */}
+                {showRankDetails && (
+                    <div className="mb-6 rounded-2xl border border-white/10 bg-slate-900/50 overflow-hidden animate-in slide-in-from-top-2 fade-in duration-300">
+                        <div className="px-4 pt-4 pb-2">
+                            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Rank Progression</div>
+                            <div className="text-xs text-slate-400">Total: <span className="text-white font-bold">{formatKm(totalDistance)} km</span></div>
+                        </div>
+                        <div className="px-3 pb-3 space-y-1">
+                            {RANKS.map((r, i) => {
+                                const isUnlocked = totalDistance >= r.minMeters;
+                                const isCurrent = rank.current.id === r.id;
+                                const nextR = RANKS[i + 1];
+                                const rangeEnd = nextR ? nextR.minMeters : r.minMeters;
+                                const rangeStart = r.minMeters;
+                                const progressInRange = isUnlocked
+                                    ? (nextR
+                                        ? Math.min(100, ((totalDistance - rangeStart) / (rangeEnd - rangeStart)) * 100)
+                                        : 100)
+                                    : 0;
+
+                                return (
+                                    <div
+                                        key={r.id}
+                                        className={`flex items-center gap-3 p-3 rounded-xl transition-all ${isCurrent
+                                            ? 'bg-slate-800/80 border border-white/10 shadow-lg'
+                                            : isUnlocked
+                                                ? 'bg-slate-800/30'
+                                                : 'bg-slate-900/30 opacity-50'
+                                            }`}
+                                    >
+                                        <div className={`flex-none w-10 h-10 rounded-lg flex items-center justify-center ${isUnlocked
+                                            ? `${r.color.replace('text-', 'bg-').replace('400', '950')} ${r.color}`
+                                            : 'bg-slate-800 text-slate-600'
+                                            }`}>
+                                            <r.icon size={20} />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center justify-between">
+                                                <div className={`text-sm font-black uppercase ${isUnlocked ? 'text-white' : 'text-slate-500'}`}>
+                                                    {r.title}
+                                                    {isCurrent && <span className="ml-2 text-[10px] font-bold text-cyan-400 normal-case">← You</span>}
+                                                </div>
+                                                <div className={`text-xs font-mono ${isUnlocked ? r.color : 'text-slate-600'}`}>
+                                                    {r.minMeters === 0 ? '0 km' : `${formatKm(r.minMeters)} km`}
+                                                </div>
+                                            </div>
+                                            {/* Progress bar within this rank */}
+                                            <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+                                                <div
+                                                    className={`h-full rounded-full transition-all duration-700 ${isUnlocked
+                                                        ? r.color.replace('text-', 'bg-')
+                                                        : 'bg-slate-700'
+                                                        }`}
+                                                    style={{ width: `${progressInRange}%` }}
+                                                />
+                                            </div>
+                                            {isCurrent && nextR && (
+                                                <div className="mt-1 text-[10px] text-slate-500">
+                                                    {formatKm(nextR.minMeters - totalDistance)} km to <span className={nextR.color}>{nextR.title}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
 
                 {/* Identity / Combat Style */}
                 <div className="mb-6">
@@ -195,19 +315,24 @@ export function ProfileScreen() {
                 </div>
 
                 {/* Streak */}
-                {currentStreak > 0 && (
-                    <div className="mb-6 flex items-center gap-3 rounded-xl border border-orange-500/20 bg-orange-950/20 p-4">
-                        <Flame className="h-8 w-8 text-orange-400 fill-orange-500" />
-                        <div>
-                            <div className="text-xs font-bold uppercase tracking-wider text-orange-400">
-                                Active Streak
-                            </div>
-                            <div className="text-2xl font-black text-white">
-                                {currentStreak} <span className="text-sm font-medium text-orange-400/70">days</span>
-                            </div>
+                <div className="mb-6 flex items-center gap-3 rounded-xl border border-orange-500/20 bg-orange-950/20 p-4">
+                    <Flame className="h-8 w-8 text-orange-400 fill-orange-500" />
+                    <div className="flex-1">
+                        <div className="text-xs font-bold uppercase tracking-wider text-orange-400">
+                            Active Streak
+                        </div>
+                        <div className="text-2xl font-black text-white">
+                            {currentStreak} <span className="text-sm font-medium text-orange-400/70">days</span>
                         </div>
                     </div>
-                )}
+                    <div className="text-right">
+                        <div className="text-[10px] uppercase tracking-wider text-slate-500">Best</div>
+                        <div className="text-lg font-bold text-white">{bestStreak || currentStreak}d</div>
+                        {hasStreakShield && (
+                            <div className="text-[10px] text-cyan-400 font-bold">🛡️ Protected</div>
+                        )}
+                    </div>
+                </div>
 
                 {/* Stats Grid */}
                 <div className="grid grid-cols-3 gap-2 mb-8">
@@ -222,6 +347,22 @@ export function ProfileScreen() {
                     <div className="bg-slate-900/40 rounded-lg p-3 border border-white/5">
                         <div className="text-[10px] uppercase tracking-wider text-slate-500 font-bold flex items-center gap-1"><Clock size={10} /> Time</div>
                         <div className="text-lg font-bold text-white">{totalTimeHours}h</div>
+                    </div>
+                </div>
+
+                {/* Weight Setting */}
+                <div className="mb-8 bg-slate-900/40 rounded-xl p-4 border border-white/5">
+                    <div className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-2">Body Weight (for calorie accuracy)</div>
+                    <div className="flex items-center gap-3">
+                        <input
+                            type="range"
+                            min={40}
+                            max={150}
+                            value={weightKg}
+                            onChange={(e) => setWeightKg(Number(e.target.value))}
+                            className="flex-1 accent-cyan-500"
+                        />
+                        <div className="text-lg font-bold text-white w-16 text-right">{weightKg} kg</div>
                     </div>
                 </div>
             </div>
@@ -335,7 +476,6 @@ export function ProfileScreen() {
                 </div>
             </div>
 
-            {/* Share Conquest Button */}
             <div className="px-4 mt-4">
                 <button
                     onClick={() => setShowShare(true)}
@@ -344,6 +484,25 @@ export function ProfileScreen() {
                     <Share2 size={18} />
                     Share Conquest Card
                 </button>
+            </div>
+
+            {/* Footer */}
+            <div className="pt-8 pb-4 text-center">
+                <div className="text-[10px] text-slate-600 font-mono">
+                    ID: {isGuest ? 'GUEST' : (user?.id.substring(0, 8) + '...')}
+                </div>
+                <div className="mt-2 flex justify-center gap-4">
+                    <a
+                        href="/privacy.html"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[10px] text-slate-500 hover:text-cyan-400 underline"
+                    >
+                        Privacy Policy
+                    </a>
+                    <span className="text-[10px] text-slate-700">•</span>
+                    <span className="text-[10px] text-slate-700">v1.0.0 Alpha</span>
+                </div>
             </div>
 
             {/* Share Modal */}
@@ -357,6 +516,16 @@ export function ProfileScreen() {
             {/* Identity Editor */}
             {showIdentityEditor && (
                 <IdentityEditor onClose={() => setShowIdentityEditor(false)} />
+            )}
+
+            {/* Auth Modal */}
+            {showAuth && (
+                <AuthScreen onClose={() => setShowAuth(false)} />
+            )}
+
+            {/* Auth Modal */}
+            {showAuth && (
+                <AuthScreen onClose={() => setShowAuth(false)} />
             )}
         </div>
     );

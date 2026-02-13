@@ -10,8 +10,8 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       manifest: {
-        name: "City Fog of War",
-        short_name: "FogRun",
+        name: "CityQuest",
+        short_name: "CityQuest",
         description: "Gamified exploration for runners (Sofia).",
         theme_color: "#030712",
         background_color: "#030712",

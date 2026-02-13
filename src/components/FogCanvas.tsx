@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useMap } from "react-leaflet";
-import { haversineMeters } from "../utils/geo";
 import type { LatLngPoint } from "../types";
+import { SpatialGrid } from "../utils/spatial";
+import { DomUtil } from "leaflet";
 
 type FogCanvasProps = {
   revealed: LatLngPoint[];
@@ -12,47 +13,35 @@ type FogCanvasProps = {
   fogOpacity?: number;
 };
 
-const HEX_SIZE = 15;
+// Fixed ground size for hexagons (side length in meters)
+const HEX_SIDE_METERS = 50;
 
-
-function createHexPattern(ctx: CanvasRenderingContext2D, opacity: number) {
-  // We want to recreate pattern if cached one doesn't match current params? 
-  // For simplicity, let's just recreate it if needed or rely on the caller to clear cache if needed.
-  // Actually, since we use a global variable `hexPattern`, we should invalidate it or key it.
-  // But given the scope, let's just recreate it if it's null, but we need to handle updates.
-  // A better approach in this component: create it every time or memoize properly inside the component.
-  // Since `drawFog` is called frequently on move, we want to cache.
-  // Let's attach the opacity to the cached object or just recreate if different?
-  // For now, let's just rebuild it simply.
-
+function createHexPattern(ctx: CanvasRenderingContext2D, opacity: number, sizePx: number) {
   const patternCanvas = document.createElement('canvas');
-  const size = HEX_SIZE;
+  const size = sizePx;
   const height = size * Math.sqrt(3);
-  const width = size * 2;
+  const width = size * 2; // Point to point width of flat-topped hex is 2 * size? No, pointy topped?
+  // Our drawHex logic below uses flat-topped geometry?
+  // x + size * cos(angle)... angle 0 is right.
+  // 60 deg is bottom-right.
+  // This draws a pointy-topped hex if start angle is 0? No, 0 is right.
+  // Let's stick to the drawing logic:
 
   // Create a tileable pattern
-  // We need a slightly larger canvas to ensure seamless tiling of hexes
-  patternCanvas.width = width * 1.5; // 3 * size / 2 * 2
+  // For standard hex tiling, we usually need a specific rectangular block.
+  // Using 1.5 * width?
+  patternCanvas.width = width * 1.5;
   patternCanvas.height = height;
 
   const pCtx = patternCanvas.getContext('2d');
   if (!pCtx) return null;
 
-  // Background - Use the passed opacity!
-  // The user wants "empty zones" to look like "unlocked/ready for exploration".
-  // Unlocked usually implies some visibility. 
-  // But strictly, "fog" usually covers things. 
-  // The user said: "make it look like they are already unlocked districts... with hexagons".
-  // Unlocked districts in DistrictLayer have `fillOpacity: 0`.
-  // So the "fog" IS the visual for the empty zones.
-  // We'll make the background semi-transparent black and lines distinct.
-
   pCtx.fillStyle = `rgba(0, 0, 0, ${opacity})`;
   pCtx.fillRect(0, 0, patternCanvas.width, patternCanvas.height);
 
   // Draw Hexagons
-  pCtx.lineWidth = 1.5; // Slightly thicker
-  pCtx.strokeStyle = "rgba(34, 211, 238, 0.5)"; // Cyan, slightly higher opacity for visibility
+  pCtx.lineWidth = Math.max(1, size / 15); // Scale line width slightly
+  pCtx.strokeStyle = "rgba(34, 211, 238, 0.3)"; // Cyan, slightly more transparent
 
   const drawHex = (x: number, y: number) => {
     pCtx.beginPath();
@@ -67,20 +56,17 @@ function createHexPattern(ctx: CanvasRenderingContext2D, opacity: number) {
     pCtx.stroke();
   };
 
-  // Draw a grid that tiles
-  // 0,0
+  // Tiling offsets for "Pointy Topped" (angle 0 at 3 o'clock)
+  // Actually the code below seems to tile correctly for the 1.5 width logic.
   drawHex(0, 0);
   drawHex(0, height);
   drawHex(width * 1.5, 0);
   drawHex(width * 1.5, height);
-
-  // Offset by width * 0.75, height * 0.5
   drawHex(width * 0.75, height * 0.5);
   drawHex(width * 0.75, -height * 0.5);
   drawHex(width * 0.75, height * 1.5);
-
-  // Additional tiling coverage
   drawHex(-width * 0.75, height * 0.5);
+  drawHex(-width * 0.75, -height * 0.5); // Add corners just in case
 
   return ctx.createPattern(patternCanvas, 'repeat');
 }
@@ -88,7 +74,7 @@ function createHexPattern(ctx: CanvasRenderingContext2D, opacity: number) {
 function drawFog(
   canvas: HTMLCanvasElement,
   map: ReturnType<typeof useMap>,
-  revealed: LatLngPoint[],
+  grid: SpatialGrid,
   radiusPx: number,
   fogOpacity: number
 ) {
@@ -97,94 +83,126 @@ function drawFog(
 
   const w = canvas.width;
   const h = canvas.height;
+  const dpr = window.devicePixelRatio || 1;
 
-  // Fill fog with Pattern
+  // 1. Calculate Hex Size in Pixels based on Zoom/Meters
+  const center = map.getCenter();
+  // Meters per pixel at center lat
+  const latRad = center.lat * Math.PI / 180;
+  const metersPerPixel = 156543.03 * Math.cos(latRad) / Math.pow(2, map.getZoom());
+  const hexSizePx = Math.max(5, (HEX_SIDE_METERS / metersPerPixel) * dpr); // Minimum 5px to avoid infinite density
+
+  // 2. Calculate Map Origin Offset (to lock pattern to ground)
+  // map.getPixelOrigin() gives the pixel coordinate of the top-left of the map layer within the projection
+  const origin = map.getPixelOrigin();
+  // We need to shift the pattern so that world(0,0) aligns with pattern(0,0) or similar.
+  // Pattern aligns to canvas (0,0).
+  // Canvas (0,0) is at map.containerPointToLayerPoint([0,0])? 
+  // Actually we move the canvas to match map pane position.
+  // The 'origin' shifts when we pan.
+
+  // Offset in logic pixels (CS coordinates)
+  const offsetX = -origin.x;
+  const offsetY = -origin.y;
+
+  // Scale offset by dpr if ctx handles dpr
+  // Context is scaled by setTransform(dpr, ...).
+  // So logical coords are used for drawing.
+  // Pattern offset should be in logical coords.
+
+  // 1. Fill fog with Pattern
   ctx.globalCompositeOperation = "source-over";
   ctx.clearRect(0, 0, w, h);
 
-  const pattern = createHexPattern(ctx, fogOpacity);
+  const pattern = createHexPattern(ctx, fogOpacity, hexSizePx / dpr); // createHexPattern uses logical size? internal canvas needs real/logical?
+  // Let's keep createHexPattern simple: pass sizePx.
+  // wait, if we pass hexSizePx (which includes dpr), createHexPattern creates a canvas.
+  // If usePattern takes that canvas, it will be mapped 1:1 to pixels.
+  // If ctx is scaled by dpr, then a 10px interaction in ctx = 20px on screen.
+  // If pattern is 20px, it will look like 10px logical.
+
   if (pattern) {
     ctx.fillStyle = pattern;
+
+    // Apply transformation to lock to ground
+    const matrix = new DOMMatrix();
+    // Scale for DPR if the pattern was created assuming 1:1 pixels but we want it to match our 'hexSizePx'
+    // Actually, let's just create the pattern at logical size and let ctx scale it?
+    // createHexPattern creates a canvas. ctx.createPattern uses it as source.
+    // If I draw to an offscreen canvas of width 100, and use it as pattern on a ctx scaled by 2x,
+    // the pattern will be scaled by 2x.
+
+    // So if 'hexSizePx' includes dpr, we should DIVIDE by dpr when creating pattern if we want it to be 'logical pixels'.
+    // OR we pass logical size to createHexPattern.
+    // Let's pass logical size:
+    const logicalHexSize = HEX_SIDE_METERS / metersPerPixel;
+    const p2 = createHexPattern(ctx, fogOpacity, logicalHexSize);
+    if (p2) {
+      ctx.fillStyle = p2;
+      // matrix.translateSelf(offsetX, offsetY); 
+      // We set the matrix on the pattern
+      p2.setTransform(matrix.translate(offsetX, offsetY));
+    }
   } else {
     ctx.fillStyle = `rgba(0,0,0,${fogOpacity})`;
   }
 
-  // Need to scale pattern if transform is applied, but simpler to just fill
   ctx.save();
-  ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform for pattern fill to be screen-space
-  ctx.fillRect(0, 0, w, h);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // Restore logical coords for rect fill
+  ctx.fillRect(0, 0, w / dpr, h / dpr);
   ctx.restore();
 
+  // 2. Query Visible Points
+  const bounds = map.getBounds();
+  const visiblePoints = grid.query(bounds);
 
-  if (revealed.length < 1) return;
+  if (visiblePoints.length < 1) return;
 
-  // Clear revealed path
-  // Use a soft brush (radial gradient) for "soft reveal"
+  // 3. Clear revealed path (Union of Circles)
   ctx.globalCompositeOperation = "destination-out";
 
+  const drawRadius = radiusPx * 0.6;
+  const blurRadius = radiusPx * 0.8;
 
-
-  // Since gradients don't stroke well, we iterate points. 
-  // For performance on long paths, we might need a hybrid approach:
-  // Stroke with solid line for core, then dot gradients for edges?
-  // Let's try iterating points first. If gap > radius/2, interpolate.
-
-  // To optimize: simple stroke for the "hard" core, then "soft" dots?
-  // Actually, standard stroke is faster. The user requested soft edges.
-  // We can use shadowBlur for soft edges on the stroke!
-
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-
-  // 1. Core clearing (harder center)
-  ctx.lineWidth = radiusPx * 1.2;
-  ctx.strokeStyle = "rgba(0,0,0,1)";
-
-  // 2. Soft Edge via Shadow
-  ctx.shadowBlur = radiusPx * 0.8;
+  ctx.shadowBlur = blurRadius;
   ctx.shadowColor = "rgba(0,0,0,1)";
+  ctx.fillStyle = "rgba(0,0,0,1)";
 
   ctx.beginPath();
 
-  if (revealed.length > 0) {
-    const first = revealed[0];
-    const pt = map.latLngToContainerPoint([first.lat, first.lng]);
-    ctx.moveTo(pt.x, pt.y);
-    ctx.lineTo(pt.x, pt.y);
-  }
+  const step = visiblePoints.length > 5000 ? Math.ceil(visiblePoints.length / 5000) : 1;
 
-  for (let i = 1; i < revealed.length; i++) {
-    const p1 = revealed[i - 1];
-    const p2 = revealed[i];
+  for (let i = 0; i < visiblePoints.length; i += step) {
+    const p = visiblePoints[i];
+    const pt = map.latLngToContainerPoint([p.lat, p.lng]);
+    const lx = pt.x; // logical pixels
+    const ly = pt.y;
 
-    const dist = haversineMeters(p1, p2);
-    const pt = map.latLngToContainerPoint([p2.lat, p2.lng]);
-
-    if (dist > 50) {
-      ctx.moveTo(pt.x, pt.y);
-      ctx.stroke(); // Stroke previous segment
-      ctx.beginPath();
-      ctx.moveTo(pt.x, pt.y);
-    } else {
-      ctx.lineTo(pt.x, pt.y);
+    // Bounds check
+    if (lx < -blurRadius || ly < -blurRadius || lx > (w / dpr) + blurRadius || ly > (h / dpr) + blurRadius) {
+      continue;
     }
-  }
-  ctx.stroke();
 
-  // Reset shadow for next frame!
+    ctx.moveTo(lx, ly);
+    ctx.arc(lx, ly, drawRadius, 0, Math.PI * 2);
+  }
+
+  ctx.fill();
+
+  // Reset shadow
   ctx.shadowBlur = 0;
   ctx.shadowColor = "transparent";
 }
 
-// ... existing imports ...
-import { DomUtil } from "leaflet";
-// ... existing imports ...
-
-// ... (keep createHexPattern and drawFog as is, assuming drawFog uses latLngToContainerPoint) ...
-
 export function FogCanvas({ revealed, radiusPx = 18, radiusMeters, fogOpacity = 0.7 }: FogCanvasProps) {
   const map = useMap();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  const grid = useMemo(() => {
+    const g = new SpatialGrid();
+    g.load(revealed);
+    return g;
+  }, [revealed]);
 
   const getRadiusInPx = () => {
     if (radiusMeters) {
@@ -199,83 +217,68 @@ export function FogCanvas({ revealed, radiusPx = 18, radiusMeters, fogOpacity = 
     return radiusPx;
   };
 
-  const redrawKey = useMemo(() => {
-    const last = revealed[revealed.length - 1];
-    return `${revealed.length}:${last?.lat ?? 0}:${last?.lng ?? 0}:${last?.t ?? 0}`;
-  }, [revealed]);
-
   useEffect(() => {
-    // 1. Create or get the custom pane
     let pane = map.getPane("fog-pane");
     if (!pane) {
       pane = map.createPane("fog-pane");
-      pane.style.zIndex = "390"; // Between tiles (200) and overlays (400)
-      pane.style.pointerEvents = "none"; // Let clicks pass through to map
+      pane.style.zIndex = "390";
+      pane.style.pointerEvents = "none";
     }
 
     const canvas = document.createElement("canvas");
     canvas.style.position = "absolute";
-    // No fixed left/top/zIndex here, handled by Leaflet pane + setPosition
     canvas.style.pointerEvents = "none";
     canvasRef.current = canvas;
-
-    // 2. Add canvas to the pane
     pane.appendChild(canvas);
 
-    const updateSizeAndPosition = () => {
-      // Position the canvas at the top-left of the viewport (in layer coords)
-      // This ensures that (0,0) on the canvas corresponds to (0,0) on the screen
-      const topLeft = map.containerPointToLayerPoint([0, 0]);
-      DomUtil.setPosition(canvas, topLeft);
-
-      const size = map.getSize();
-      const dpr = window.devicePixelRatio || 1;
-
-      canvas.width = Math.floor(size.x * dpr);
-      canvas.height = Math.floor(size.y * dpr);
-      canvas.style.width = `${size.x}px`;
-      canvas.style.height = `${size.y}px`;
-
-      const ctx = canvas.getContext("2d");
-      if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    };
-
-    const redraw = () => {
-      if (!canvasRef.current) return;
-      updateSizeAndPosition();
-      const currentRadius = getRadiusInPx();
-      drawFog(canvasRef.current, map, revealed, currentRadius, fogOpacity);
-    };
-
-    redraw();
-
-    map.on("resize", redraw);
-    map.on("move", redraw);
-    map.on("zoomend", redraw);
-    map.on("viewreset", redraw);
-
     return () => {
-      map.off("resize", redraw);
-      map.off("move", redraw);
-      map.off("zoomend", redraw);
-      map.off("viewreset", redraw);
       if (pane && canvas.parentNode === pane) {
         pane.removeChild(canvas);
       }
       canvasRef.current = null;
     };
-  }, [map, fogOpacity, radiusPx, radiusMeters, revealed.length]);
+  }, [map]);
 
-  // Secondary effect for prop updates only
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    // We don't need to update position here if map didn't move, just redraw content
-    // But drawFog needs correct size/context? It uses existing canvas.
-    const currentRadius = getRadiusInPx();
-    drawFog(canvas, map, revealed, currentRadius, fogOpacity);
-  }, [map, redrawKey, radiusPx, radiusMeters, fogOpacity, revealed]);
+
+    // We rely on Leaflet to position the pane?
+    // Actually typically dealing with Canvas overlay requires us to position the canvas.
+    // L.Canvas layer does this helper.
+    // Here we are doing raw canvas.
+    // We need to update size/pos on move.
+
+    // NOTE: When using 'zoomend', the scale changes, so we must redraw.
+    // During zoom, it might look weird unless wrapped in a custom layer.
+    // For now, simple redraw is acceptable for MVP.
+
+    const redraw = () => {
+      if (!canvas) return;
+      const size = map.getSize();
+      const topLeft = map.containerPointToLayerPoint([0, 0]);
+      DomUtil.setPosition(canvas, topLeft);
+
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = size.x * dpr;
+      canvas.height = size.y * dpr;
+      canvas.style.width = `${size.x}px`;
+      canvas.style.height = `${size.y}px`;
+
+      const ctx = canvas.getContext("2d");
+      if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const currentRadius = getRadiusInPx();
+      drawFog(canvas, map, grid, currentRadius, fogOpacity);
+    };
+
+    redraw();
+
+    map.on("resize move zoomend viewreset", redraw);
+    return () => {
+      map.off("resize move zoomend viewreset", redraw);
+    };
+  }, [map, grid, fogOpacity, radiusPx, radiusMeters]);
 
   return null;
 }
-

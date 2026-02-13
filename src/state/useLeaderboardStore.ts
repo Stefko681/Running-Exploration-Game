@@ -1,8 +1,21 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { useRunStore } from "./useRunStore";
 import { leaderboardService, LeaderboardRow } from "../services/leaderboardService";
+import { supabase } from "../services/supabase";
+import { Session, User } from "@supabase/supabase-js";
 
 export type League = "Bronze" | "Silver" | "Gold" | "Platinum" | "Diamond" | "Master";
+
+/** Auto-calculate league from score */
+export function leagueFromScore(score: number): League {
+    if (score >= 100000) return "Master";
+    if (score >= 50000) return "Diamond";
+    if (score >= 15000) return "Platinum";
+    if (score >= 5000) return "Gold";
+    if (score >= 1000) return "Silver";
+    return "Bronze";
+}
 
 type LeaderboardState = {
     currentLeague: League;
@@ -11,20 +24,23 @@ type LeaderboardState = {
     error: string | null;
     lastSyncedAt: number;
 
-    // Guest Mode
+    // Auth State
     isGuest: boolean;
-    username: string; // stored username
+    user: User | null;
+    session: Session | null;
+    username: string; // from profile
     avatarSeed: string;
     combatStyle: string;
     badges: any[];
 
     // Actions
+    initializeAuth: () => void;
     refreshLeaderboard: () => Promise<void>;
-    uploadMyScore: (userId: string, username: string, score: number, distance: number) => Promise<void>;
+    uploadMyScore: (score: number, distance: number) => Promise<void>;
+    recalculateLeague: (score: number) => void;
     updateProfile: (style: string, badges: any[]) => Promise<void>;
-    setLeague: (league: League) => void;
-    joinLeaderboard: (username: string) => Promise<void>;
     setAvatarSeed: (seed: string) => void;
+    signOut: () => Promise<void>;
 };
 
 const SYNC_COOLDOWN_MS = 60 * 1000; // 1 minute
@@ -38,15 +54,78 @@ export const useLeaderboardStore = create<LeaderboardState>()(
             error: null,
             lastSyncedAt: 0,
 
-            // Default to guest if no ID found in storage (handled by persist middleware actually, but let's be explicit)
-            // We'll trust the persisted state or default to true
             isGuest: true,
+            user: null,
+            session: null,
             username: "Guest",
             avatarSeed: "",
             combatStyle: "Balanced",
             badges: [],
 
-            setLeague: (league) => set({ currentLeague: league }),
+            initializeAuth: () => {
+                // Check initial session
+                supabase.auth.getSession().then(({ data: { session } }) => {
+                    if (session) {
+                        set({ session, user: session.user, isGuest: false });
+                        // Fetch profile
+                        leaderboardService.getProfile(session.user.id).then(profile => {
+                            if (profile) {
+                                set({
+                                    username: profile.username || session.user.email?.split('@')[0] || "Operator",
+                                    avatarSeed: profile.avatar_seed || session.user.id,
+                                    combatStyle: profile.combat_style || "Balanced",
+                                    badges: profile.badges || []
+                                });
+                            }
+                        });
+                    }
+                });
+
+                // Listen for changes
+                supabase.auth.onAuthStateChange(async (_event, session) => {
+                    if (session) {
+                        set({ session, user: session.user, isGuest: false });
+
+                        // 1. Fetch Profile
+                        const profile = await leaderboardService.getProfile(session.user.id);
+                        if (profile) {
+                            set({
+                                username: profile.username || session.user.email?.split('@')[0] || "Operator",
+                                avatarSeed: profile.avatar_seed || session.user.id,
+                                combatStyle: profile.combat_style || "Balanced",
+                                badges: profile.badges || []
+                            });
+                        }
+
+                        // 2. Sync Local Progress to Cloud immediately
+                        try {
+                            const { runs, revealed } = useRunStore.getState();
+                            const totalDistMeters = runs.reduce((acc, r) => acc + r.distanceMeters, 0);
+                            const totalDistKm = totalDistMeters / 1000;
+
+                            if (totalDistKm > 0) {
+                                // Calculate score (same formula as useRunStore)
+                                const uniqueCells = new Set(revealed.map((p: any) => `${Math.round(p.lat * 200)},${Math.round(p.lng * 200)}`)).size;
+                                const score = Math.floor((uniqueCells * 50) + (Math.sqrt(totalDistKm) * 500));
+
+                                // Upload
+                                get().uploadMyScore(score, totalDistKm);
+                            }
+                        } catch (err) {
+                            console.error("Auto-sync failed", err);
+                        }
+                    } else {
+                        set({ session: null, user: null, isGuest: true, username: "Guest" });
+                    }
+                });
+            },
+
+            recalculateLeague: (score: number) => {
+                const league = leagueFromScore(score);
+                if (league !== get().currentLeague) {
+                    set({ currentLeague: league });
+                }
+            },
             setAvatarSeed: (seed) => set({ avatarSeed: seed }),
 
             refreshLeaderboard: async () => {
@@ -71,28 +150,22 @@ export const useLeaderboardStore = create<LeaderboardState>()(
                 }
             },
 
-            // New action to register/join
-            joinLeaderboard: async (username: string) => {
-                // generate ID
-                const userId = crypto.randomUUID();
-                set({ isGuest: false, username });
-
-                // Save to local storage for persistence across sessions if store is cleared
-                localStorage.setItem("cityquest_user_id", userId);
-                localStorage.setItem("cityquest_username", username);
+            signOut: async () => {
+                await supabase.auth.signOut();
+                set({ isGuest: true, user: null, session: null, username: "Guest" });
             },
 
-            uploadMyScore: async (userId, username, score, distance) => {
-                // Optimization: Don't upload if guest
-                if (get().isGuest) return;
+            uploadMyScore: async (score, distance) => {
+                const { isGuest, user, currentLeague, username } = get();
+                if (isGuest || !user) return;
+
+                // Auto-recalculate league from score
+                get().recalculateLeague(score);
 
                 try {
-                    // Ensure profile first
-                    await leaderboardService.ensureProfile(userId, username);
-
-                    await leaderboardService.uploadScore(userId, get().currentLeague, score, distance);
-
-                    // Refresh to see ourselves
+                    // Ensure profile exists (idempotent)
+                    await leaderboardService.ensureProfile(user.id, username || user.email?.split('@')[0] || "Runner");
+                    await leaderboardService.uploadScore(user.id, currentLeague, score, distance);
                     await get().refreshLeaderboard();
                 } catch (err) {
                     console.error("Failed to sync score", err);
@@ -102,17 +175,16 @@ export const useLeaderboardStore = create<LeaderboardState>()(
             updateProfile: async (style, badges) => {
                 set({ combatStyle: style, badges });
 
-                // If not guest, sync to backend
-                const { isGuest } = get();
-                const userId = localStorage.getItem("cityquest_user_id");
-
-                if (!isGuest && userId) {
+                const { isGuest, user, username } = get();
+                if (!isGuest && user) {
                     try {
-                        await leaderboardService.updateProfile(userId, {
+                        // Ensure profile exists before updating (for new users who haven't run yet)
+                        await leaderboardService.ensureProfile(user.id, username || "Operator");
+
+                        await leaderboardService.updateProfile(user.id, {
                             combat_style: style,
                             badges
                         });
-                        // Refresh to update our row in the list
                         get().refreshLeaderboard();
                     } catch (err) {
                         console.error("Failed to sync profile updates", err);
@@ -121,12 +193,12 @@ export const useLeaderboardStore = create<LeaderboardState>()(
             }
         }),
         {
-            name: "cityquest-real-leaderboard",
+            name: "cityquest-auth-store",
             partialize: (state) => ({
                 currentLeague: state.currentLeague,
-                isGuest: state.isGuest,
-                username: state.username,
-                avatarSeed: state.avatarSeed,
+                // Don't persist session/user, let Auth handling re-hydrate it safely
+                // Actually persistence of session is handled by Supabase client internally
+                // We just persist UI state
                 combatStyle: state.combatStyle,
                 badges: state.badges
             }),

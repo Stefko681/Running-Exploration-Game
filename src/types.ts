@@ -12,6 +12,8 @@ export type RunSummary = {
   endedAt: number;
   distanceMeters: number;
   points: LatLngPoint[];
+  /** Total time in ms spent paused during this run */
+  pausedDuration?: number;
 };
 
 

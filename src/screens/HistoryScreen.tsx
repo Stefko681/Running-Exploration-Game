@@ -166,10 +166,14 @@ function WeekSummary({ runs }: { runs: RunSummary[] }) {
   const avgSpeed = calcSpeed(totalDist, totalDuration);
 
   return (
-    <div className="grid grid-cols-3 gap-2 text-center">
+    <div className="grid grid-cols-4 gap-2 text-center">
       <div className="rounded-xl bg-slate-800/40 border border-slate-700/30 px-2 py-2">
         <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Distance</div>
         <div className="text-sm font-bold text-white">{formatKm(totalDist)} km</div>
+      </div>
+      <div className="rounded-xl bg-slate-800/40 border border-slate-700/30 px-2 py-2">
+        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Time</div>
+        <div className="text-sm font-bold text-white">{formatDurationMs(totalDuration)}</div>
       </div>
       <div className="rounded-xl bg-slate-800/40 border border-slate-700/30 px-2 py-2">
         <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Runs</div>

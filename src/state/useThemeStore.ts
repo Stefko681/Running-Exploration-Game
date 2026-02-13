@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type ThemeId = "cyberpunk" | "matrix" | "vaporwave";
+export type ThemeId = "cyberpunk" | "matrix" | "vaporwave" | "daylight";
 
 type ThemeState = {
     theme: ThemeId;

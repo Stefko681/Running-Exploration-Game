@@ -34,7 +34,7 @@ export function FieldManualModal({ onClose }: FieldManualModalProps) {
                             <Footprints size={16} /> 1. Objective
                         </h3>
                         <p className="text-slate-300 text-sm leading-relaxed">
-                            Your mission is to physically explore the real world. As you move, you reveal the
+                            Welcome to <span className="text-white font-bold">CityQuest</span>. Your mission is to physically explore the real world. As you move, you reveal the
                             <span className="text-white font-bold"> Fog of War</span> on the map.
                             The more area you uncover, the higher your rank.
                         </p>
@@ -51,8 +51,8 @@ export function FieldManualModal({ onClose }: FieldManualModalProps) {
                                     <Footprints size={14} />
                                 </div>
                                 <div>
-                                    <div className="text-white font-bold text-sm">100 PTS per KM</div>
-                                    <div className="text-slate-400 text-xs">Earn points for every kilometer of distance covered during a run.</div>
+                                    <div className="text-white font-bold text-sm">Distance Breakdown</div>
+                                    <div className="text-slate-400 text-xs">Based on SQRT(Distance). Longer runs give diminishing returns to encourage exploration over pure marathon running.</div>
                                 </div>
                             </div>
 
@@ -63,7 +63,7 @@ export function FieldManualModal({ onClose }: FieldManualModalProps) {
                                 <div>
                                     <div className="text-white font-bold text-sm">50 PTS per New Area</div>
                                     <div className="text-slate-400 text-xs">
-                                        The world is divided into small hexagonal cells. Uncovering a <span className="text-indigo-300">new cell</span> for the first time grants a significant bonus.
+                                        Uncovering a <span className="text-indigo-300">new cell</span> yields the highest rewards. Go where you haven't been!
                                     </div>
                                 </div>
                             </div>
@@ -73,27 +73,33 @@ export function FieldManualModal({ onClose }: FieldManualModalProps) {
                     {/* Section 3: Supply Drops */}
                     <section>
                         <h3 className="text-amber-400 font-bold uppercase tracking-wider text-sm mb-3 flex items-center gap-2">
-                            <Target size={16} /> 3. Supply Drops
+                            <Target size={16} /> 3. Supply Drops & Rewards
                         </h3>
                         <p className="text-slate-300 text-sm leading-relaxed mb-2">
-                            Every day, <span className="text-amber-400 font-bold">3 Supply Drops</span> appear within 1.5km of your location.
+                            Daily drops appear within 1.5km. Collect them to earn:
                         </p>
                         <ul className="list-disc list-inside text-slate-400 text-xs space-y-1 ml-1">
-                            <li>Physically run to the drop location to collect it.</li>
-                            <li>Collecting drops grants extra XP and Badge progress.</li>
-                            <li>Collect all 3 to trigger a "Wave Clear" and spawn harder drops further away!</li>
+                            <li><span className="text-amber-400">XP Bonus</span>: Instant score boost.</li>
+                            <li><span className="text-cyan-400">Streak Shield</span>: Protects your daily streak if you miss a day.</li>
+                            <li><span className="text-purple-400">Fog Boost</span>: Doubles exploration radius for 30 mins.</li>
                         </ul>
                     </section>
 
-                    {/* Section 4: Ranks & Competition */}
+                    {/* Section 4: Account & Safety */}
                     <section>
                         <h3 className="text-purple-400 font-bold uppercase tracking-wider text-sm mb-3 flex items-center gap-2">
-                            <Award size={16} /> 4. Ranks & Leagues
+                            <Award size={16} /> 4. Protocol
                         </h3>
-                        <p className="text-slate-300 text-sm leading-relaxed">
-                            Compete on the <span className="text-white font-bold">Global Leaderboard</span>.
-                            Your total PTS determines your standing in the weekly Leagues (Bronze to Master).
-                        </p>
+                        <ul className="list-disc list-inside text-slate-400 text-xs space-y-2 ml-1">
+                            <li>
+                                <span className="text-white font-bold">Authentication</span>:
+                                Login via the Profile screen to save your progress to the cloud and compete on the Global Leaderboard.
+                            </li>
+                            <li>
+                                <span className="text-white font-bold">Safety</span>:
+                                Stay aware of your surroundings. Do not trespass. This is a game, but the world is real.
+                            </li>
+                        </ul>
                     </section>
 
                 </div>

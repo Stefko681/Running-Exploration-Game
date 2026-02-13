@@ -3,8 +3,8 @@ import "leaflet/dist/leaflet.css";
 
 import type { Map as LeafletMap } from "leaflet";
 import { DivIcon } from "leaflet";
-import { LocateFixed, Square, Play, Flame, Share2, Radio, Package, Activity, Gauge, Navigation, Compass, HelpCircle, Map as MapIcon, Lock, Timer, Zap, Pause } from "lucide-react";
-import { useEffect, useMemo, useState, useRef, useCallback } from "react";
+import { LocateFixed, Square, Play, Flame, Share2, Radio, Package, Activity, Gauge, Navigation, Compass, HelpCircle, Map as MapIcon, Lock, Timer, Zap, Pause, ChevronUp, ChevronDown, Shield } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { MapContainer, Polyline, TileLayer, useMap, Marker, Popup } from "react-leaflet";
 import { BottomSheet } from "../components/BottomSheet";
 import { FogCanvas } from "../components/FogCanvas";
@@ -20,7 +20,7 @@ import { FOG_BRUSH_RADIUS_METERS, FOG_OPACITY } from "../config";
 import { useGeolocation } from "../hooks/useGeolocation";
 import { useDeviceOrientation } from "../hooks/useDeviceOrientation";
 import { useRunStore } from "../state/useRunStore";
-import { useSettingsStore } from "../state/useSettingsStore";
+import { useSettingsStore, CITY_CELL_COUNTS } from "../state/useSettingsStore";
 import { useDistrictStore } from "../state/useDistrictStore";
 import type { LatLngPoint } from "../types";
 import { cellKey, formatKm, haversineMeters } from "../utils/geo";
@@ -45,18 +45,19 @@ function formatTimer(totalSec: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-// formatPace removed - using km/h speed now
-
-// Estimate calories: ~1 kcal per kg per km (rough)
-function estimateCalories(distanceMeters: number, weightKg: number = 70): number {
+// Estimate calories using user weight from settings
+function estimateCalories(distanceMeters: number, weightKg: number): number {
   return Math.round((distanceMeters / 1000) * weightKg * 1.036);
 }
 
 export function MapScreen() {
   const {
     isRunning,
+    isPaused,
     start,
     stop,
+    pause,
+    resume,
     currentRun,
     revealed,
     totalRunMeters,
@@ -64,43 +65,32 @@ export function MapScreen() {
     currentStreak,
     supplyDrops,
     runStartedAt,
+    pausedDuration,
     refreshDrops,
-    lastDropReward
+    lastDropReward,
+    hasStreakShield,
+    fogBoostRemaining,
   } = useRunStore();
 
-  // Live timer
+  // Live timer — excludes paused duration
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
     if (!isRunning || !runStartedAt) {
       setElapsed(0);
       return;
     }
-    // Initialize with already-elapsed time
-    setElapsed(Math.floor((Date.now() - runStartedAt) / 1000));
-    const interval = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - runStartedAt) / 1000));
-    }, 1000);
+    const calcElapsed = () => {
+      const raw = Date.now() - runStartedAt;
+      const paused = isPaused && useRunStore.getState().pausedAt
+        ? pausedDuration + (Date.now() - useRunStore.getState().pausedAt!)
+        : pausedDuration;
+      return Math.max(0, Math.floor((raw - paused) / 1000));
+    };
+    setElapsed(calcElapsed());
+    if (isPaused) return; // Don't tick while paused
+    const interval = setInterval(() => setElapsed(calcElapsed()), 1000);
     return () => clearInterval(interval);
-  }, [isRunning, runStartedAt]);
-
-  // Auto-pause detection
-  const [isAutoPaused, setIsAutoPaused] = useState(false);
-  const pauseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const checkAutoPause = useCallback((speedKmh: number) => {
-    if (!isRunning) return;
-    if (speedKmh < 0.5) {
-      // If speed is very low for 10 seconds, show auto-pause indicator
-      if (!pauseTimer.current) {
-        pauseTimer.current = setTimeout(() => setIsAutoPaused(true), 10000);
-      }
-    } else {
-      if (pauseTimer.current) {
-        clearTimeout(pauseTimer.current);
-        pauseTimer.current = null;
-      }
-      setIsAutoPaused(false);
-    }
-  }, [isRunning]);
+  }, [isRunning, runStartedAt, isPaused, pausedDuration]);
 
   const { unlockedDistricts } = useDistrictStore();
   const [follow, setFollow] = useState(false);
@@ -110,6 +100,10 @@ export function MapScreen() {
   const [showDistrictList, setShowDistrictList] = useState(false);
   const districts = useDistrictStore((s) => s.districts);
   const runZoom = useSettingsStore((s) => s.runZoom);
+  const weightKg = useSettingsStore((s) => s.weightKg);
+  const selectedCity = useSettingsStore((s) => s.selectedCity);
+  const hudMode = useSettingsStore((s) => s.hudMode);
+  const setHudMode = useSettingsStore((s) => s.setHudMode);
 
   // Parse district names from raw data
   const districtNames = useMemo(() => {
@@ -190,7 +184,7 @@ export function MapScreen() {
         : "GPS idle";
 
   const runStateLabel = isRunning
-    ? (isAutoPaused ? "Paused" : "Running")
+    ? (isPaused ? "⏸ Paused" : "Running")
     : currentRun.length ? "Stopped" : "Ready";
   const accuracyValue = reading && typeof reading.accuracy === "number" ? Math.round(reading.accuracy) : null;
   const accuracyLabel = accuracyValue !== null ? `${accuracyValue} m` : "n/a";
@@ -230,19 +224,24 @@ export function MapScreen() {
   const speedMs = reading?.speed ?? 0;
   const speedKmh = (speedMs * 3.6).toFixed(1);
   const altitude = reading?.altitude ? Math.round(reading.altitude) : "---";
-  const calories = estimateCalories(totalRunMeters);
+  const calories = estimateCalories(totalRunMeters, weightKg);
 
-  // Auto-pause check
-  useEffect(() => {
-    checkAutoPause(speedMs * 3.6);
-  }, [speedMs, checkAutoPause]);
+  // Pace (min/km)
+  const paceStr = useMemo(() => {
+    if (!isRunning || elapsed === 0 || totalRunMeters < 10) return "--:--";
+    const paceSecPerKm = elapsed / (totalRunMeters / 1000);
+    const m = Math.floor(paceSecPerKm / 60);
+    const s = Math.floor(paceSecPerKm % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  }, [elapsed, totalRunMeters, isRunning]);
 
-  // Exploration percentage (Sofia ~490 km²)
-  // Each cell at zoom 4 ≈ 0.005 km² → total ~98000 cells for Sofia
+  // Dynamic exploration percentage based on selected city
   const explorationPercent = useMemo(() => {
-    const totalCityCells = 98000; // approximate for Sofia
+    const totalCityCells = CITY_CELL_COUNTS[selectedCity] || 98000;
     return Math.min(100, (explorationScore / totalCityCells) * 100).toFixed(2);
-  }, [explorationScore]);
+  }, [explorationScore, selectedCity]);
+
+  const isMinimalHud = hudMode === "minimal";
 
   // Calculate nearest drop distance and bearing
   const nearestDropInfo = useMemo(() => {
@@ -304,8 +303,8 @@ export function MapScreen() {
       {lastDropReward && (
         <div className="fixed top-20 left-4 right-4 z-[100] animate-in slide-in-from-top-4 fade-in duration-500">
           <div className="mx-auto max-w-sm bg-slate-900/90 border border-amber-500/50 rounded-2xl p-4 backdrop-blur-md shadow-2xl flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-500 border border-amber-500/30">
-              <Package size={24} />
+            <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center text-2xl border border-amber-500/30">
+              {lastDropReward.icon || "📦"}
             </div>
             <div className="flex-1">
               <div className="text-sm font-bold text-white">{lastDropReward.title}</div>
@@ -379,15 +378,29 @@ export function MapScreen() {
           <div className="glass-panel px-4 py-3">
             <div className="mb-2 flex items-center justify-between text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500">
               <div className="flex items-center gap-3">
-                <span className={isAutoPaused ? 'text-amber-400' : ''}>{runStateLabel}</span>
+                <span className={isPaused ? 'text-amber-400' : ''}>{runStateLabel}</span>
                 {currentStreak > 0 && (
                   <div className="flex items-center gap-1 rounded-full bg-orange-950/30 px-1.5 py-0.5 text-[10px] font-bold text-orange-400 ring-1 ring-orange-500/20 backdrop-blur-sm animate-in fade-in zoom-in">
                     <Flame className="h-3 w-3 fill-orange-500" />
                     <span>{currentStreak}d</span>
+                    {hasStreakShield && <Shield className="h-3 w-3 text-cyan-400" />}
+                  </div>
+                )}
+                {fogBoostRemaining > 0 && (
+                  <div className="flex items-center gap-1 rounded-full bg-blue-950/30 px-1.5 py-0.5 text-[10px] font-bold text-blue-400 ring-1 ring-blue-500/20">
+                    🌊 x2
                   </div>
                 )}
               </div>
-              <span className={accuracyColor}>GPS • {accuracyLabel}</span>
+              <div className="flex items-center gap-2">
+                <span className={accuracyColor}>GPS • {accuracyLabel}</span>
+                <button
+                  onClick={() => setHudMode(isMinimalHud ? 'full' : 'minimal')}
+                  className="text-slate-500 hover:text-slate-300 transition-colors"
+                >
+                  {isMinimalHud ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+                </button>
+              </div>
             </div>
             <div className="flex items-center justify-between gap-4">
               <StatCard label="Distance" value={`${formatKm(totalRunMeters)} km`} />
@@ -398,49 +411,52 @@ export function MapScreen() {
                 accent
               />
             </div>
-            {/* District Stats */}
-            <div
-              className="mt-2 flex items-center justify-between border-t border-slate-800/50 pt-2 cursor-pointer hover:bg-slate-800/30 -mx-4 px-4 py-1 rounded-lg transition-colors"
-              onClick={() => setShowDistrictList((v) => !v)}
-            >
-              <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                <MapIcon size={12} />
-                <span>Districts</span>
-              </div>
-              <div className="text-xs font-bold text-slate-300">
-                <span className="text-cyan-400">{unlockedDistricts.length}</span> / {districtNames.length || 24}
-              </div>
-            </div>
-            {showDistrictList && districtNames.length > 0 && (
-              <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border border-slate-700/50 bg-slate-950/80 backdrop-blur-md">
-                {districtNames.map((d) => (
-                  <div
-                    key={d.id}
-                    className={`flex items-center gap-2 px-3 py-2 border-b border-slate-800/30 last:border-0 text-xs ${d.unlocked ? 'text-slate-200' : 'text-slate-500'}`}
-                  >
-                    {d.unlocked ? (
-                      <span className="text-emerald-400 text-sm">✓</span>
-                    ) : (
-                      <Lock size={12} className="text-rose-400/70" />
-                    )}
-                    <span className={d.unlocked ? 'font-medium' : 'font-normal'}>{d.name}</span>
+            {/* Extended stats — only in full HUD mode */}
+            {!isMinimalHud && (
+              <>
+                {/* District Stats */}
+                <div
+                  className="mt-2 flex items-center justify-between border-t border-slate-800/50 pt-2 cursor-pointer hover:bg-slate-800/30 -mx-4 px-4 py-1 rounded-lg transition-colors"
+                  onClick={() => setShowDistrictList((v) => !v)}
+                >
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    <MapIcon size={12} />
+                    <span>Districts</span>
                   </div>
-                ))}
-              </div>
+                  <div className="text-xs font-bold text-slate-300">
+                    <span className="text-cyan-400">{unlockedDistricts.length}</span> / {districtNames.length || 24}
+                  </div>
+                </div>
+                {showDistrictList && districtNames.length > 0 && (
+                  <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border border-slate-700/50 bg-slate-950/80 backdrop-blur-md">
+                    {districtNames.map((d) => (
+                      <div
+                        key={d.id}
+                        className={`flex items-center gap-2 px-3 py-2 border-b border-slate-800/30 last:border-0 text-xs ${d.unlocked ? 'text-slate-200' : 'text-slate-500'}`}
+                      >
+                        {d.unlocked ? (
+                          <span className="text-emerald-400 text-sm">✓</span>
+                        ) : (
+                          <Lock size={12} className="text-rose-400/70" />
+                        )}
+                        <span className={d.unlocked ? 'font-medium' : 'font-normal'}>{d.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div
+                  className={`mt-2 text-xs ${isError ? "text-rose-300" : "text-slate-400"}`}
+                >
+                  {statusText}
+                  {isError ? (
+                    <>
+                      {" "}• Check that location permissions are allowed for this site and that
+                      GPS is enabled on your device.
+                    </>
+                  ) : null}
+                </div>
+              </>
             )}
-            <div
-              className={`mt-2 text-xs ${isError ? "text-rose-300" : "text-slate-400"
-                }`}
-            >
-              {statusText}
-              {isError ? (
-                <>
-                  {" "}
-                  • Check that location permissions are allowed for this site and that
-                  GPS is enabled on your device.
-                </>
-              ) : null}
-            </div>
             {!isRunning && (
               <>
                 <RunAreaSelector />
@@ -449,95 +465,105 @@ export function MapScreen() {
           </div>
 
           {/* Immersive HUD — context-sensitive */}
-          <div className="grid grid-cols-3 gap-2 px-2 animate-in slide-in-from-bottom-4 duration-700 delay-150">
-            {isRunning ? (
-              <>
-                {/* SPEED */}
-                <div className="flex flex-col items-center justify-center rounded-xl border border-cyan-500/20 bg-slate-900/60 p-2 backdrop-blur-md">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 mb-1 flex items-center gap-1">
-                    <Gauge size={10} /> SPEED
+          {!isMinimalHud && (
+            <div className="grid grid-cols-4 gap-2 px-2 animate-in slide-in-from-bottom-4 duration-700 delay-150">
+              {isRunning ? (
+                <>
+                  {/* SPEED */}
+                  <div className="flex flex-col items-center justify-center rounded-xl border border-cyan-500/20 bg-slate-900/60 p-2 backdrop-blur-md">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 mb-1 flex items-center gap-1">
+                      <Gauge size={10} /> SPEED
+                    </div>
+                    <div className="text-lg font-black text-white lining-nums tabular-nums">
+                      {speedKmh}<span className="text-[10px] ml-0.5 text-slate-400 font-normal">km/h</span>
+                    </div>
                   </div>
-                  <div className="text-xl font-black text-white lining-nums tabular-nums">
-                    {speedKmh}<span className="text-[10px] ml-0.5 text-slate-400 font-normal">km/h</span>
-                  </div>
-                </div>
 
-                {/* TIMER */}
-                <div className={`flex flex-col items-center justify-center rounded-xl border bg-slate-900/60 p-2 backdrop-blur-md relative overflow-hidden ${isAutoPaused ? 'border-amber-500/30' : 'border-emerald-500/20'
-                  }`}>
-                  <div className={`text-[10px] font-bold uppercase tracking-wider mb-1 flex items-center gap-1 z-10 ${isAutoPaused ? 'text-amber-400' : 'text-emerald-400'
-                    }`}>
-                    {isAutoPaused ? <Pause size={10} /> : <Timer size={10} />}
-                    {isAutoPaused ? 'PAUSED' : 'TIME'}
+                  {/* TIMER */}
+                  <div className={`flex flex-col items-center justify-center rounded-xl border bg-slate-900/60 p-2 backdrop-blur-md relative overflow-hidden ${isPaused ? 'border-amber-500/30' : 'border-emerald-500/20'}`}>
+                    <div className={`text-[10px] font-bold uppercase tracking-wider mb-1 flex items-center gap-1 z-10 ${isPaused ? 'text-amber-400' : 'text-emerald-400'}`}>
+                      {isPaused ? <Pause size={10} /> : <Timer size={10} />}
+                      {isPaused ? 'PAUSED' : 'TIME'}
+                    </div>
+                    <div className="text-lg font-black text-white lining-nums tabular-nums z-10">
+                      {formatTimer(elapsed)}
+                    </div>
+                    {isPaused && (
+                      <div className="absolute inset-0 bg-amber-500/5 animate-pulse z-0" />
+                    )}
                   </div>
-                  <div className="text-xl font-black text-white lining-nums tabular-nums z-10">
-                    {formatTimer(elapsed)}
-                  </div>
-                  {isAutoPaused && (
-                    <div className="absolute inset-0 bg-amber-500/5 animate-pulse z-0" />
-                  )}
-                </div>
 
-                {/* CALORIES */}
-                <div className="flex flex-col items-center justify-center rounded-xl border border-rose-500/20 bg-slate-900/60 p-2 backdrop-blur-md">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-rose-400 mb-1 flex items-center gap-1">
-                    <Zap size={10} /> CAL
+                  {/* PACE */}
+                  <div className="flex flex-col items-center justify-center rounded-xl border border-purple-500/20 bg-slate-900/60 p-2 backdrop-blur-md">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-purple-400 mb-1 flex items-center gap-1">
+                      <Activity size={10} /> PACE
+                    </div>
+                    <div className="text-lg font-black text-white lining-nums tabular-nums">
+                      {paceStr}<span className="text-[10px] ml-0.5 text-slate-400 font-normal">min/km</span>
+                    </div>
                   </div>
-                  <div className="text-xl font-black text-white lining-nums tabular-nums">
-                    {calories}<span className="text-[10px] ml-0.5 text-slate-400 font-normal">kcal</span>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                {/* Speed */}
-                <div className="flex flex-col items-center justify-center rounded-xl border border-cyan-500/20 bg-slate-900/60 p-2 backdrop-blur-md">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 mb-1 flex items-center gap-1">
-                    <Gauge size={10} /> SPD
-                  </div>
-                  <div className="text-xl font-black text-white lining-nums tabular-nums">
-                    {speedKmh}<span className="text-[10px] ml-0.5 text-slate-400 font-normal">km/h</span>
-                  </div>
-                </div>
 
-                {/* Signal / Nearest Drop */}
-                <div className="flex flex-col items-center justify-center rounded-xl border border-amber-500/20 bg-slate-900/60 p-2 backdrop-blur-md relative overflow-hidden">
-                  {nearestDropInfo ? (
-                    <>
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400 mb-1 flex items-center gap-1 z-10">
-                        <Navigation size={10} style={{ transform: `rotate(${relativeBearing}deg)` }} className="transition-transform duration-500" /> TARGET
-                      </div>
-                      <div className="text-xl font-black text-white lining-nums tabular-nums z-10">
-                        {Math.round(nearestDropInfo.distance)}<span className="text-[10px] ml-0.5 text-slate-400 font-normal">m</span>
-                      </div>
-                      {nearestDropInfo.distance < 100 && (
-                        <div className="absolute inset-0 bg-amber-500/10 animate-pulse z-0" />
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1 flex items-center gap-1">
-                        <Radio size={10} /> SIG
-                      </div>
-                      <div className="text-md font-bold text-slate-400">
-                        NO SIGNAL
-                      </div>
-                    </>
-                  )}
-                </div>
+                  {/* CALORIES */}
+                  <div className="flex flex-col items-center justify-center rounded-xl border border-rose-500/20 bg-slate-900/60 p-2 backdrop-blur-md">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-rose-400 mb-1 flex items-center gap-1">
+                      <Zap size={10} /> CAL
+                    </div>
+                    <div className="text-lg font-black text-white lining-nums tabular-nums">
+                      {calories}<span className="text-[10px] ml-0.5 text-slate-400 font-normal">kcal</span>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Speed */}
+                  <div className="flex flex-col items-center justify-center rounded-xl border border-cyan-500/20 bg-slate-900/60 p-2 backdrop-blur-md">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 mb-1 flex items-center gap-1">
+                      <Gauge size={10} /> SPD
+                    </div>
+                    <div className="text-xl font-black text-white lining-nums tabular-nums">
+                      {speedKmh}<span className="text-[10px] ml-0.5 text-slate-400 font-normal">km/h</span>
+                    </div>
+                  </div>
 
-                {/* Altitude */}
-                <div className="flex flex-col items-center justify-center rounded-xl border border-emerald-500/20 bg-slate-900/60 p-2 backdrop-blur-md">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mb-1 flex items-center gap-1">
-                    <Activity size={10} /> ALT
+                  {/* Signal / Nearest Drop */}
+                  <div className="flex flex-col items-center justify-center rounded-xl border border-amber-500/20 bg-slate-900/60 p-2 backdrop-blur-md relative overflow-hidden">
+                    {nearestDropInfo ? (
+                      <>
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400 mb-1 flex items-center gap-1 z-10">
+                          <Navigation size={10} style={{ transform: `rotate(${relativeBearing}deg)` }} className="transition-transform duration-500" /> TARGET
+                        </div>
+                        <div className="text-xl font-black text-white lining-nums tabular-nums z-10">
+                          {Math.round(nearestDropInfo.distance)}<span className="text-[10px] ml-0.5 text-slate-400 font-normal">m</span>
+                        </div>
+                        {nearestDropInfo.distance < 100 && (
+                          <div className="absolute inset-0 bg-amber-500/10 animate-pulse z-0" />
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1 flex items-center gap-1">
+                          <Radio size={10} /> SIG
+                        </div>
+                        <div className="text-md font-bold text-slate-400">
+                          NO SIGNAL
+                        </div>
+                      </>
+                    )}
                   </div>
-                  <div className="text-xl font-black text-white lining-nums tabular-nums">
-                    {altitude}<span className="text-[10px] ml-0.5 text-slate-400 font-normal">m</span>
+
+                  {/* Altitude */}
+                  <div className="flex flex-col items-center justify-center rounded-xl border border-emerald-500/20 bg-slate-900/60 p-2 backdrop-blur-md">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mb-1 flex items-center gap-1">
+                      <Activity size={10} /> ALT
+                    </div>
+                    <div className="text-xl font-black text-white lining-nums tabular-nums">
+                      {altitude}<span className="text-[10px] ml-0.5 text-slate-400 font-normal">m</span>
+                    </div>
                   </div>
-                </div>
-              </>
-            )}
-          </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -571,13 +597,30 @@ export function MapScreen() {
 
         <div className="flex flex-1 items-center justify-end gap-2">
           {isRunning ? (
-            <PrimaryButton
-              variant="danger"
-              onClick={stop}
-              leftIcon={<Square className="h-4 w-4" />}
-            >
-              Stop
-            </PrimaryButton>
+            <>
+              {isPaused ? (
+                <PrimaryButton
+                  onClick={resume}
+                  leftIcon={<Play className="h-4 w-4" />}
+                >
+                  Resume
+                </PrimaryButton>
+              ) : (
+                <PrimaryButton
+                  onClick={pause}
+                  leftIcon={<Pause className="h-4 w-4" />}
+                >
+                  Pause
+                </PrimaryButton>
+              )}
+              <PrimaryButton
+                variant="danger"
+                onClick={stop}
+                leftIcon={<Square className="h-4 w-4" />}
+              >
+                Stop
+              </PrimaryButton>
+            </>
           ) : (
             <PrimaryButton
               onClick={handleStartRun}

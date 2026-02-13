@@ -12,7 +12,31 @@ export type LeaderboardRow = {
     badges?: any[];
 };
 
+export type ProfileRow = {
+    username: string;
+    avatar_seed?: string;
+    combat_style?: string;
+    badges?: any[];
+};
+
 export const leaderboardService = {
+    /**
+     * Get a user's profile by ID
+     */
+    async getProfile(userId: string): Promise<ProfileRow | null> {
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('username, avatar_seed, combat_style, badges')
+            .eq('id', userId)
+            .single();
+
+        if (error) {
+            // It's okay if profile doesn't exist yet
+            return null;
+        }
+        return data;
+    },
+
     /**
      * Fetch the top 50 players for a specific league
      */

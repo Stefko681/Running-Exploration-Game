@@ -94,16 +94,18 @@ export function ShareCard({ run, mode, onClose }: ShareCardProps) {
             const blob = await (await fetch(dataUrl)).blob();
             const filename = mode === 'total' ? "city-quest-conquest.png" : "city-quest-run.png";
             const file = new File([blob], filename, { type: "image/png" });
-            const title = mode === 'total' ? "My City Conquest" : "My Run";
+            const title = mode === 'total' ? "My City Conquest — CityQuest" : "My Run — CityQuest";
+            const appUrl = window.location.origin;
             const text = mode === 'total'
-                ? `I've explored ${formatKm(totalDistance)}km of the city!`
-                : `I ran ${formatKm(totalDistance)}km!`;
+                ? `🏙️ I've explored ${formatKm(totalDistance)}km of the city in CityQuest! ${appUrl}`
+                : `🏃 I ran ${formatKm(totalDistance)}km! Track your own runs on CityQuest: ${appUrl}`;
 
             if (navigator.share && navigator.canShare({ files: [file] })) {
                 await navigator.share({
                     files: [file],
                     title,
-                    text
+                    text,
+                    url: appUrl,
                 });
             } else {
                 // Fallback download

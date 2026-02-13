@@ -9,20 +9,28 @@ export type PersistedState = {
   revealed: LatLngPoint[];
   runs: RunSummary[];
   currentStreak?: number;
+  bestStreak?: number;
   lastRunDate?: number | null;
   achievements?: string[];
   supplyDrops?: SupplyDrop[];
   lastDropGenerationDate?: number | null;
+  bonusXP?: number;
+  hasStreakShield?: boolean;
+  fogBoostRemaining?: number;
 };
 
 const EMPTY_STATE: PersistedState = {
   revealed: [],
   runs: [],
   currentStreak: 0,
+  bestStreak: 0,
   lastRunDate: null,
   achievements: [],
   supplyDrops: [],
-  lastDropGenerationDate: null
+  lastDropGenerationDate: null,
+  bonusXP: 0,
+  hasStreakShield: false,
+  fogBoostRemaining: 0,
 };
 
 /**
@@ -43,14 +51,7 @@ export async function loadPersisted(): Promise<PersistedState> {
       console.log("Migrating data from LocalStorage to IndexedDB...");
       const parsed = JSON.parse(rawLegacy);
       const sanitized = sanitize(parsed);
-
-      // Save to IndexedDB immediately
       await set(KEY, sanitized);
-
-      // Optional: don't clear legacy yet, just in case? 
-      // User said "Migrate to IndexedDB", usually implied swap.
-      // localStorage.removeItem(LEGACY_KEY); 
-
       return sanitized;
     }
 
@@ -66,10 +67,14 @@ function sanitize(parsed: any): PersistedState {
     revealed: Array.isArray(parsed.revealed) ? (parsed.revealed as LatLngPoint[]) : [],
     runs: Array.isArray(parsed.runs) ? (parsed.runs as RunSummary[]) : [],
     currentStreak: typeof parsed.currentStreak === 'number' ? parsed.currentStreak : 0,
+    bestStreak: typeof parsed.bestStreak === 'number' ? parsed.bestStreak : 0,
     lastRunDate: typeof parsed.lastRunDate === 'number' ? parsed.lastRunDate : null,
     achievements: Array.isArray(parsed.achievements) ? (parsed.achievements as string[]) : [],
     supplyDrops: Array.isArray(parsed.supplyDrops) ? (parsed.supplyDrops as SupplyDrop[]) : [],
-    lastDropGenerationDate: typeof parsed.lastDropGenerationDate === 'number' ? parsed.lastDropGenerationDate : null
+    lastDropGenerationDate: typeof parsed.lastDropGenerationDate === 'number' ? parsed.lastDropGenerationDate : null,
+    bonusXP: typeof parsed.bonusXP === 'number' ? parsed.bonusXP : 0,
+    hasStreakShield: typeof parsed.hasStreakShield === 'boolean' ? parsed.hasStreakShield : false,
+    fogBoostRemaining: typeof parsed.fogBoostRemaining === 'number' ? parsed.fogBoostRemaining : 0,
   };
 }
 

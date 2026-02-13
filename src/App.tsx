@@ -1,10 +1,9 @@
 import { useEffect, useState, lazy, Suspense } from "react";
 import { AlertTriangle, X, Map, Clock, User, Trophy } from "lucide-react";
-import { OnboardingOverlay } from "./components/OnboardingOverlay";
-
 import { AchievementToast } from "./components/AchievementToast";
 import { useRunStore } from "./state/useRunStore";
 import { useThemeStore } from "./state/useThemeStore";
+import { useLeaderboardStore } from "./state/useLeaderboardStore";
 
 // Lazy-loaded screen components for optimized bundle performance
 const HistoryScreen = lazy(() => import("./screens/HistoryScreen").then(m => ({ default: m.HistoryScreen })));
@@ -37,12 +36,11 @@ export default function App() {
     document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
 
-  // Initial Store Hydration
+  // Initial Store Hydration  
   useEffect(() => {
     useRunStore.getState().init();
-  }, []);
+    useLeaderboardStore.getState().initializeAuth(); // Start Auth listener
 
-  useEffect(() => {
     // @ts-ignore - Expose store for testing
     window.useRunStore = useRunStore;
   }, []);
@@ -103,8 +101,6 @@ export default function App() {
           </button>
         </div>
       )}
-
-      <OnboardingOverlay />
 
       <AchievementToast />
     </>

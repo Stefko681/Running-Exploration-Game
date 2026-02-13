@@ -4,8 +4,7 @@ import { useRunStore } from "../state/useRunStore";
 import { useLeaderboardStore, League } from "../state/useLeaderboardStore";
 import { cellKey } from "../utils/geo";
 import { RunnerProfileModal } from "../components/RunnerProfileModal";
-import { JoinLeaderboardModal } from "../components/JoinLeaderboardModal";
-import { Settings } from "lucide-react";
+import { AuthScreen } from "./AuthScreen";
 
 const LEAGUE_COLORS: Record<League, string> = {
     "Bronze": "text-orange-700 bg-orange-900/20 border-orange-800",
@@ -18,7 +17,7 @@ const LEAGUE_COLORS: Record<League, string> = {
 
 export function LeaderboardScreen() {
     const { revealed, runs } = useRunStore();
-    const { players, currentLeague, isLoading, error, refreshLeaderboard, uploadMyScore, isGuest, joinLeaderboard } = useLeaderboardStore();
+    const { players, currentLeague, isLoading, error, refreshLeaderboard, uploadMyScore, isGuest } = useLeaderboardStore();
 
     const [selectedRunner, setSelectedRunner] = useState<string | null>(null);
     const [showJoinModal, setShowJoinModal] = useState(false);
@@ -27,7 +26,7 @@ export function LeaderboardScreen() {
     const userStats = useMemo(() => {
         const uniqueCells = new Set(revealed.map(p => cellKey(p, 4))).size;
         const totalDistKm = runs.reduce((acc, r) => acc + r.distanceMeters, 0) / 1000;
-        const score = Math.floor((uniqueCells * 50) + (totalDistKm * 100));
+        const score = Math.floor((uniqueCells * 50) + (Math.sqrt(totalDistKm) * 500));
 
         const isGuestMode = useLeaderboardStore.getState().isGuest; // Access fresh state if needed, or rely on hook
         return {
@@ -67,8 +66,8 @@ export function LeaderboardScreen() {
 
         const sync = async () => {
             // Only upload if not guest
-            if (!useLeaderboardStore.getState().isGuest && userId) {
-                await uploadMyScore(userId, useLeaderboardStore.getState().username, userStats.score, userStats.distance);
+            if (!useLeaderboardStore.getState().isGuest) {
+                await uploadMyScore(userStats.score, userStats.distance);
             }
             // Always fetch leaderboard
             await refreshLeaderboard();
@@ -180,17 +179,10 @@ export function LeaderboardScreen() {
                             className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded-full text-xs font-bold transition-colors shadow-lg shadow-emerald-900/20"
                         >
                             <User size={14} />
-                            Join Leaderboard
+                            Login to Join Leaderboard
                         </button>
                     ) : (
                         <div className="flex items-center gap-3">
-                            <button
-                                onClick={() => setShowJoinModal(true)} // reuse modal for name change if we want, or add specific modal
-                                className="text-slate-500 hover:text-white transition-colors"
-                                title="Change Designation"
-                            >
-                                <Settings size={14} />
-                            </button>
                             <div className={`flex items-center gap-1.5 text-xs font-mono ${connectionColor}`}>
                                 <ConnectionIcon size={14} />
                                 <span>{isLoading ? "Syncing..." : "Live"}</span>
@@ -201,13 +193,7 @@ export function LeaderboardScreen() {
             </div>
 
             {showJoinModal && (
-                <JoinLeaderboardModal
-                    onJoin={(name) => {
-                        joinLeaderboard(name);
-                        setShowJoinModal(false);
-                    }}
-                    onClose={() => setShowJoinModal(false)}
-                />
+                <AuthScreen onClose={() => setShowJoinModal(false)} />
             )}
 
             {/* Podium */}

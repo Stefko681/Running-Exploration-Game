@@ -27,6 +27,16 @@
     --app-accent-rgb: 244, 114, 182;
   }
 
+  :root[data-theme="daylight"] {
+    color-scheme: light;
+    --app-bg: #ffffff;
+    --app-surface: #f1f5f9;
+    --app-accent: #2563eb;
+    --app-accent-rgb: 37, 99, 235;
+    --app-text: #0f172a;
+    --app-text-secondary: #475569;
+  }
+
   html,
   body,
   #root {
@@ -64,6 +74,14 @@
 
   :root[data-theme="vaporwave"] .leaflet-tile-pane {
     filter: invert(100%) sepia(60%) hue-rotate(190deg) brightness(0.9) contrast(1.1);
+  }
+
+  :root[data-theme="daylight"] .leaflet-tile-pane {
+    filter: none; /* Natural map colors for outdoor use */
+  }
+
+  :root[data-theme="daylight"] body {
+    color: var(--app-text, #0f172a);
   }
 }
 

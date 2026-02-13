@@ -5,37 +5,48 @@ import type { LatLngPoint, RunSummary } from "../types";
 import { audio } from "../utils/audio";
 import { haversineMeters } from "../utils/geo";
 import { checkNewAchievements } from "../utils/achievements";
-import { generateDailyDrops, checkDropCollection, type SupplyDrop } from "../utils/supplyDrops";
+import { generateDailyDrops, isNearDrop, type SupplyDrop } from "../utils/supplyDrops";
 import { loadPersisted, savePersisted } from "./storage";
+import { useDistrictStore } from "./useDistrictStore";
 
 type RunState = {
   isRunning: boolean;
   currentRun: LatLngPoint[];
   revealed: LatLngPoint[];
   totalRunMeters: number;
-  /** List of completed runs for history/dashboard */
   runs: RunSummary[];
   lastAccepted?: LatLngPoint;
   runStartedAt?: number;
-  /** Id of run selected for preview on the map from history */
   previewRunId?: string | null;
-  /** Error message if storage quota is exceeded or fails */
   storageError?: string;
+
+  // Pause/Resume
+  isPaused: boolean;
+  pausedAt?: number;
+  pausedDuration: number; // total ms spent paused during current run
 
   // Gamification
   currentStreak: number;
-  lastRunDate: number | null; // Epoch ms of the last completed run
-  achievements: string[]; // IDs of unlocked achievements
+  bestStreak: number;
+  lastRunDate: number | null;
+  achievements: string[];
+  bonusXP: number; // accumulated from supply drop rewards
 
   // Supply Drops
   supplyDrops: SupplyDrop[];
   lastDropGenerationDate: number | null;
-  lastCollectedDrop: SupplyDrop | null; // For toast notification
-  lastDropReward?: { title: string; message: string } | null;
-  dropDifficulty: number; // 1 = normal, 2 = hard, etc.
+  lastCollectedDrop: SupplyDrop | null;
+  lastDropReward?: { title: string; message: string; icon: string } | null;
+  dropDifficulty: number;
+
+  // Streak Shield & Fog Boost from drops
+  hasStreakShield: boolean;
+  fogBoostRemaining: number; // points remaining with 2x brush
 
   start: () => void;
   stop: () => void;
+  pause: () => void;
+  resume: () => void;
   resetAll: () => void;
   acceptPoint: (p: LatLngPoint) => { accepted: boolean; reason?: string };
   setPreviewRun: (id: string | null) => void;
@@ -45,11 +56,9 @@ type RunState = {
   clearLastCollectedDrop: () => void;
   deleteRun: (id: string) => void;
   refreshDrops: (location: LatLngPoint) => void;
-  /** Async hydration from IndexedDB */
   init: () => Promise<void>;
   isHydrated: boolean;
 };
-
 
 
 // Throttling mechanism for persistence
@@ -70,16 +79,20 @@ async function performSave() {
     saveTimeout = null;
   }
   const state = useRunStore.getState();
-  if (!state.isHydrated) return; // Don't overwrite if not loaded yet
+  if (!state.isHydrated) return;
 
   const result = await savePersisted({
     revealed: state.revealed,
     runs: state.runs,
     currentStreak: state.currentStreak,
+    bestStreak: state.bestStreak,
     lastRunDate: state.lastRunDate,
     achievements: state.achievements,
     supplyDrops: state.supplyDrops,
-    lastDropGenerationDate: state.lastDropGenerationDate
+    lastDropGenerationDate: state.lastDropGenerationDate,
+    bonusXP: state.bonusXP,
+    hasStreakShield: state.hasStreakShield,
+    fogBoostRemaining: state.fogBoostRemaining,
   });
   if (!result.success && result.error) {
     useRunStore.setState({ storageError: result.error });
@@ -114,7 +127,7 @@ function isSameDay(t1: number, t2: number) {
 function isNextDay(t1: number, t2: number) {
   const d1 = new Date(t1);
   const d2 = new Date(t2);
-  d2.setDate(d2.getDate() + 1); // Add 1 day to t2
+  d2.setDate(d2.getDate() + 1);
   return (
     d1.getFullYear() === d2.getFullYear() &&
     d1.getMonth() === d2.getMonth() &&
@@ -133,30 +146,98 @@ export const useRunStore = create<RunState>((set, get) => ({
   runStartedAt: undefined,
   previewRunId: null,
   storageError: undefined,
+
+  // Pause
+  isPaused: false,
+  pausedAt: undefined,
+  pausedDuration: 0,
+
+  // Gamification
   currentStreak: 0,
+  bestStreak: 0,
   lastRunDate: null,
   achievements: [],
+  bonusXP: 0,
+
+  // Supply Drops
   supplyDrops: [],
   lastDropGenerationDate: null,
+  lastCollectedDrop: null,
+  dropDifficulty: 1,
+
+  // Drop rewards
+  hasStreakShield: false,
+  fogBoostRemaining: 0,
 
   init: async () => {
     if (get().isHydrated) return;
     const data = await loadPersisted();
     set({
       ...data,
+      bonusXP: data.bonusXP ?? 0,
+      bestStreak: data.bestStreak ?? 0,
+      hasStreakShield: data.hasStreakShield ?? false,
+      fogBoostRemaining: data.fogBoostRemaining ?? 0,
       isHydrated: true
     });
+
+    // Generate supply drops on load if none were persisted
+    if (!data.supplyDrops || data.supplyDrops.length === 0) {
+      const lastKnown = data.runs?.at(-1)?.points.at(-1) || { lat: 42.6977, lng: 23.3219, t: Date.now() };
+      const drops = generateDailyDrops(lastKnown);
+      set({ supplyDrops: drops, lastDropGenerationDate: Date.now() });
+    }
+
+    // Check streak expiration on init
+    const state = get();
+    if (state.lastRunDate) {
+      const now = Date.now();
+      if (!isSameDay(now, state.lastRunDate) && !isNextDay(now, state.lastRunDate)) {
+        // Streak has expired since last session
+        if (state.hasStreakShield && state.currentStreak > 0) {
+          // Use streak shield to preserve streak
+          set({ hasStreakShield: false });
+        } else {
+          set({ currentStreak: 0 });
+        }
+      }
+    }
+
+    // Check cumulative achievements on hydration (Fix #7)
+    const hydratedState = get();
+    if (hydratedState.runs.length > 0) {
+      const totalDistance = hydratedState.runs.reduce((acc, r) => acc + r.distanceMeters, 0);
+      let unlockedDistricts = 0;
+      let totalDistricts = 0;
+      try {
+        const ds = useDistrictStore.getState();
+        unlockedDistricts = ds.unlockedDistricts?.length ?? 0;
+        totalDistricts = ds.districts?.length ?? 0;
+      } catch { /* ignore */ }
+
+      const newUnlocked = checkNewAchievements(hydratedState.achievements, {
+        totalDistance,
+        totalRuns: hydratedState.runs.length,
+        totalRevealed: hydratedState.revealed.length,
+        currentStreak: hydratedState.currentStreak,
+        totalSupplyDrops: hydratedState.supplyDrops.filter(d => d.collected).length,
+        unlockedDistricts,
+        totalDistricts,
+        lastRun: null as any // No lastRun for hydration check — only cumulative achievements
+      });
+
+      if (newUnlocked.length > 0) {
+        set({ achievements: [...hydratedState.achievements, ...newUnlocked] });
+        performSave();
+      }
+    }
   },
-  lastCollectedDrop: null,
-  dropDifficulty: 1,
 
   clearLastCollectedDrop: () => set({ lastCollectedDrop: null }),
 
   start: () => {
     const now = Date.now();
 
-    // Only generate if we have none (e.g. first run)
-    // MapScreen.tsx will now call refreshDrops independently
     if (get().supplyDrops.length === 0) {
       const lastKnown = get().runs.at(-1)?.points.at(-1) || { lat: 42.6977, lng: 23.3219, t: now };
       const currentDrops = generateDailyDrops(lastKnown);
@@ -166,6 +247,9 @@ export const useRunStore = create<RunState>((set, get) => ({
     set((s) => ({
       ...s,
       isRunning: true,
+      isPaused: false,
+      pausedAt: undefined,
+      pausedDuration: 0,
       currentRun: [],
       totalRunMeters: 0,
       lastAccepted: undefined,
@@ -174,56 +258,97 @@ export const useRunStore = create<RunState>((set, get) => ({
     audio.startRun();
   },
 
+  pause: () => {
+    const { isRunning, isPaused } = get();
+    if (!isRunning || isPaused) return;
+    set({ isPaused: true, pausedAt: Date.now() });
+  },
+
+  resume: () => {
+    const { isRunning, isPaused, pausedAt } = get();
+    if (!isRunning || !isPaused) return;
+    const additionalPause = pausedAt ? Date.now() - pausedAt : 0;
+    set((s) => ({
+      ...s,
+      isPaused: false,
+      pausedAt: undefined,
+      pausedDuration: s.pausedDuration + additionalPause,
+    }));
+  },
+
   stop: () => {
     set((s) => {
-      // If we weren't actually running or have too few points, just stop without recording
       if (!s.isRunning || s.currentRun.length < 2 || !s.runStartedAt) {
         return {
           ...s,
           isRunning: false,
+          isPaused: false,
+          pausedAt: undefined,
+          pausedDuration: 0,
           lastAccepted: undefined,
           runStartedAt: undefined,
           currentRun: [],
           totalRunMeters: 0,
-          supplyDrops: [] // Clear drops on invalid stop too
+          supplyDrops: []
         };
       }
 
       const endedAt = s.currentRun[s.currentRun.length - 1]!.t;
+
+      // Calculate actual duration excluding paused time
+      let totalPaused = s.pausedDuration;
+      if (s.isPaused && s.pausedAt) {
+        totalPaused += Date.now() - s.pausedAt;
+      }
+
       const summary: RunSummary = {
         id: `${s.runStartedAt}-${endedAt}`,
         startedAt: s.runStartedAt,
         endedAt,
         distanceMeters: s.totalRunMeters,
-        points: s.currentRun
+        points: s.currentRun,
+        pausedDuration: totalPaused,
       };
 
       const runs = [...s.runs, summary];
 
       // Streak Logic
       let streak = s.currentStreak;
+      let bestStreak = s.bestStreak;
       const now = Date.now();
 
       if (!s.lastRunDate) {
-        // First ever run
         streak = 1;
       } else {
         if (isSameDay(now, s.lastRunDate)) {
-          // Already ran today, maintain streak
-          // do nothing
+          // Already ran today, maintain streak (but make sure it's at least 1)
+          if (streak < 1) streak = 1;
         } else if (isNextDay(now, s.lastRunDate)) {
-          // Ran yesterday, streak continues!
           streak += 1;
         } else {
-          // Missed a day or more, reset execution
-          streak = 1;
+          // Missed a day — check for streak shield
+          if (s.hasStreakShield && streak > 0) {
+            // Shield consumed — streak continues
+            streak += 1;
+          } else {
+            streak = 1;
+          }
         }
       }
+      bestStreak = Math.max(bestStreak, streak);
 
       // Check for new achievements
       const totalDistance = runs.reduce((acc, r) => acc + r.distanceMeters, 0);
-      const totalRevealed = s.revealed.length; // Approximation
+      const totalRevealed = s.revealed.length;
       const totalSupplyDrops = s.supplyDrops.filter(d => d.collected).length;
+
+      let unlockedDistricts = 0;
+      let totalDistricts = 0;
+      try {
+        const ds = useDistrictStore.getState();
+        unlockedDistricts = ds.unlockedDistricts?.length ?? 0;
+        totalDistricts = ds.districts?.length ?? 0;
+      } catch { /* ignore */ }
 
       const newUnlocked = checkNewAchievements(s.achievements, {
         totalDistance,
@@ -231,6 +356,8 @@ export const useRunStore = create<RunState>((set, get) => ({
         totalRevealed,
         currentStreak: streak,
         totalSupplyDrops,
+        unlockedDistricts,
+        totalDistricts,
         lastRun: summary
       });
 
@@ -238,28 +365,51 @@ export const useRunStore = create<RunState>((set, get) => ({
         audio.levelUp();
       }
 
+      // Consume streak shield if it was used
+      const shieldUsed = !s.lastRunDate ? false :
+        !isSameDay(now, s.lastRunDate) && !isNextDay(now, s.lastRunDate) && s.hasStreakShield;
+
       return {
         ...s,
         isRunning: false,
+        isPaused: false,
+        pausedAt: undefined,
+        pausedDuration: 0,
         lastAccepted: undefined,
         runStartedAt: undefined,
         currentRun: [],
         totalRunMeters: 0,
         runs,
         currentStreak: streak,
+        bestStreak,
         lastRunDate: now,
         achievements: [...s.achievements, ...newUnlocked],
-        // supplyDrops: [] // DROPS PERSIST NOW
+        hasStreakShield: shieldUsed ? false : s.hasStreakShield,
       };
     });
-    // Force immediate save on stop
     performSave();
     audio.stopRun();
+
+    // Auto-sync leaderboard with improved score formula
+    import("./useLeaderboardStore").then(({ useLeaderboardStore }) => {
+      const lb = useLeaderboardStore.getState();
+      if (!lb.isGuest) {
+        const state = get();
+        const totalDistKm = state.runs.reduce((acc, r) => acc + r.distanceMeters, 0) / 1000;
+        const uniqueCells = new Set(state.revealed.map(p => `${Math.round(p.lat * 200)},${Math.round(p.lng * 200)}`)).size;
+        // Diminishing returns on distance, linear on exploration
+        const score = Math.floor((uniqueCells * 50) + (Math.sqrt(totalDistKm) * 500));
+        lb.uploadMyScore(score, totalDistKm);
+      }
+    }).catch(() => { });
   },
 
   resetAll: () => {
     const next = {
       isRunning: false,
+      isPaused: false,
+      pausedAt: undefined,
+      pausedDuration: 0,
       currentRun: [],
       revealed: [],
       totalRunMeters: 0,
@@ -269,21 +419,25 @@ export const useRunStore = create<RunState>((set, get) => ({
       previewRunId: null,
       storageError: undefined,
       currentStreak: 0,
+      bestStreak: 0,
       lastRunDate: null,
       achievements: [],
       supplyDrops: [],
       lastDropGenerationDate: null,
       lastCollectedDrop: null,
-      dropDifficulty: 1
+      dropDifficulty: 1,
+      bonusXP: 0,
+      hasStreakShield: false,
+      fogBoostRemaining: 0,
     };
     set(next);
-    // Force immediate save
     performSave();
   },
 
   acceptPoint: (p) => {
-    const { lastAccepted, isRunning } = get();
+    const { lastAccepted, isRunning, isPaused } = get();
     if (!isRunning) return { accepted: false, reason: "not_running" };
+    if (isPaused) return { accepted: false, reason: "paused" };
 
     // First accepted point
     if (!lastAccepted) {
@@ -299,11 +453,9 @@ export const useRunStore = create<RunState>((set, get) => ({
     const dtSec = dtMs / 1000;
     const d = haversineMeters(lastAccepted, p);
 
-    // GPS noise filter: ignore huge jumps
+    // GPS noise filter
     const speed = d / dtSec;
     if (speed > GPS_MAX_SPEED_M_PER_S) return { accepted: false, reason: "gps_jump" };
-
-    // Ignore micro jitter
     if (d < GPS_MIN_STEP_METERS) return { accepted: false, reason: "too_small" };
 
     set((s) => {
@@ -316,32 +468,59 @@ export const useRunStore = create<RunState>((set, get) => ({
       let collectedDrop: SupplyDrop | null = null;
       let activeDropsCount = 0;
 
-      const updatedDrops = drops.map(d => {
-        if (!d.collected) {
-          if (checkDropCollection(p, d)) {
+      const updatedDrops = drops.map(drop => {
+        if (!drop.collected) {
+          if (isNearDrop(p, drop)) {
             dropCollected = true;
-            collectedDrop = d;
-            return { ...d, collected: true };
+            collectedDrop = drop;
+            return { ...drop, collected: true };
           } else {
             activeDropsCount++;
           }
         }
-        return d;
+        return drop;
       });
 
       let finalDrops = updatedDrops;
       let currentDifficulty = s.dropDifficulty;
+      let bonusXP = s.bonusXP;
+      let hasStreakShield = s.hasStreakShield;
+      let fogBoostRemaining = s.fogBoostRemaining;
+      let rewardMsg: { title: string; message: string; icon: string } | null = null;
 
-      // If all active drops were just collected (activeDropsCount went to 0) and we had drops to begin with
+      // Apply drop reward
+      if (dropCollected && collectedDrop) {
+        const theReward = (collectedDrop as SupplyDrop).reward;
+        switch (theReward.type) {
+          case "xp":
+            bonusXP += theReward.amount;
+            rewardMsg = { title: "Supply Collected!", message: theReward.label, icon: theReward.icon };
+            break;
+          case "streak_shield":
+            hasStreakShield = true;
+            rewardMsg = { title: "Shield Acquired!", message: "Your streak is protected for one missed day", icon: "🛡️" };
+            break;
+          case "fog_boost":
+            fogBoostRemaining += theReward.amount;
+            rewardMsg = { title: "Fog Boost!", message: `x2 fog clearing for ${theReward.amount} points`, icon: "🌊" };
+            break;
+        }
+      }
+
+      // Decrement fog boost counter
+      if (fogBoostRemaining > 0) {
+        fogBoostRemaining = Math.max(0, fogBoostRemaining - 1);
+      }
+
+      // Respawn drops if all collected
       if (drops.length > 0 && activeDropsCount === 0 && dropCollected) {
-        // Respawn logic
         currentDifficulty += 1;
         const newRadius = 1500 + (currentDifficulty * 500);
         const newDrops = generateDailyDrops(p, 3, newRadius);
         finalDrops = [...updatedDrops, ...newDrops];
-        audio.levelUp(); // Sound for "Wave Clear"
+        audio.levelUp();
       } else if (dropCollected) {
-        audio.unlock(); // Sound for single drop
+        audio.unlock();
       }
 
       return {
@@ -353,11 +532,10 @@ export const useRunStore = create<RunState>((set, get) => ({
         supplyDrops: finalDrops,
         lastCollectedDrop: collectedDrop || s.lastCollectedDrop,
         dropDifficulty: currentDifficulty,
-        // Specific Reward feedback
-        lastDropReward: dropCollected ? {
-          title: "Supply Collected!",
-          message: "Bonus +100 Exploration XP added."
-        } : s.lastDropReward
+        bonusXP,
+        hasStreakShield,
+        fogBoostRemaining,
+        lastDropReward: rewardMsg || s.lastDropReward,
       };
     });
 
@@ -397,13 +575,13 @@ export const useRunStore = create<RunState>((set, get) => ({
   },
 
   refreshDrops: (location) => {
-    const { lastDropGenerationDate } = get();
+    const { lastDropGenerationDate, supplyDrops } = get();
     const now = Date.now();
 
-    // Refresh if no drops or if older than 12 hours
-    const shouldRefresh = !lastDropGenerationDate || (now - lastDropGenerationDate > 12 * 3600 * 1000);
+    const hasNoDrops = !supplyDrops || supplyDrops.length === 0;
+    const isStale = !lastDropGenerationDate || (now - lastDropGenerationDate > 12 * 3600 * 1000);
 
-    if (shouldRefresh) {
+    if (hasNoDrops || isStale) {
       const newDrops = generateDailyDrops(location);
       set({ supplyDrops: newDrops, lastDropGenerationDate: now });
       performSave();
