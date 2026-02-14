@@ -14,62 +14,7 @@ type FogCanvasProps = {
 };
 
 // Fixed ground size for hexagons (side length in meters)
-const HEX_SIDE_METERS = 50;
-
-function createHexPattern(ctx: CanvasRenderingContext2D, opacity: number, sizePx: number) {
-  const patternCanvas = document.createElement('canvas');
-  const size = sizePx;
-  const height = size * Math.sqrt(3);
-  const width = size * 2; // Point to point width of flat-topped hex is 2 * size? No, pointy topped?
-  // Our drawHex logic below uses flat-topped geometry?
-  // x + size * cos(angle)... angle 0 is right.
-  // 60 deg is bottom-right.
-  // This draws a pointy-topped hex if start angle is 0? No, 0 is right.
-  // Let's stick to the drawing logic:
-
-  // Create a tileable pattern
-  // For standard hex tiling, we usually need a specific rectangular block.
-  // Using 1.5 * width?
-  patternCanvas.width = width * 1.5;
-  patternCanvas.height = height;
-
-  const pCtx = patternCanvas.getContext('2d');
-  if (!pCtx) return null;
-
-  pCtx.fillStyle = `rgba(0, 0, 0, ${opacity})`;
-  pCtx.fillRect(0, 0, patternCanvas.width, patternCanvas.height);
-
-  // Draw Hexagons
-  pCtx.lineWidth = Math.max(1, size / 15); // Scale line width slightly
-  pCtx.strokeStyle = "rgba(34, 211, 238, 0.3)"; // Cyan, slightly more transparent
-
-  const drawHex = (x: number, y: number) => {
-    pCtx.beginPath();
-    for (let i = 0; i < 6; i++) {
-      const angle = (Math.PI / 3) * i;
-      const hx = x + size * Math.cos(angle);
-      const hy = y + size * Math.sin(angle);
-      if (i === 0) pCtx.moveTo(hx, hy);
-      else pCtx.lineTo(hx, hy);
-    }
-    pCtx.closePath();
-    pCtx.stroke();
-  };
-
-  // Tiling offsets for "Pointy Topped" (angle 0 at 3 o'clock)
-  // Actually the code below seems to tile correctly for the 1.5 width logic.
-  drawHex(0, 0);
-  drawHex(0, height);
-  drawHex(width * 1.5, 0);
-  drawHex(width * 1.5, height);
-  drawHex(width * 0.75, height * 0.5);
-  drawHex(width * 0.75, -height * 0.5);
-  drawHex(width * 0.75, height * 1.5);
-  drawHex(-width * 0.75, height * 0.5);
-  drawHex(-width * 0.75, -height * 0.5); // Add corners just in case
-
-  return ctx.createPattern(patternCanvas, 'repeat');
-}
+// const HEX_SIDE_METERS = 50; // No longer used
 
 function drawFog(
   canvas: HTMLCanvasElement,
@@ -85,50 +30,14 @@ function drawFog(
   const h = canvas.height;
   const dpr = window.devicePixelRatio || 1;
 
-  // 1. Calculate Hex Size
-  const center = map.getCenter();
-  const latRad = center.lat * Math.PI / 180;
-  const metersPerPixel = 156543.03 * Math.cos(latRad) / Math.pow(2, map.getZoom());
-
-  const logicalHexSize = HEX_SIDE_METERS / metersPerPixel;
-
-  // 2. Calculate Offset (Anchor to Layer Origin)
-  // We position the canvas at 'topLeft' relative to the Layer (MapPane).
-  // 'topLeft' is the Viewport Top-Left in Layer Coordinates.
-  // To lock the pattern to the Layer (which moves with the map),
-  // we need to counteract the canvas position.
-  // Drawing at (0,0) in Canvas = Drawing at 'topLeft' in Layer.
-  // We want Pattern(0,0) to align with Layer(0,0).
-  // So we translate by -topLeft.
-  const topLeft = map.containerPointToLayerPoint([0, 0]);
-  const offsetX = -topLeft.x;
-  const offsetY = -topLeft.y;
-
-  // 3. Fill fog with Pattern
+  // 1. Fill fog with Solid Color
   ctx.globalCompositeOperation = "source-over";
   ctx.clearRect(0, 0, w / dpr, h / dpr);
 
-  // Note: pattern is created in logical size
-  // ctx is scaled by dpr, so we pass logical size to createHexPattern
-  // and it will look correct.
-  const pattern = createHexPattern(ctx, fogOpacity, logicalHexSize);
+  ctx.fillStyle = `rgba(0,0,0,${fogOpacity})`;
+  ctx.fillRect(0, 0, w / dpr, h / dpr);
 
-  if (pattern) {
-    ctx.save();
-    // Anchor pattern to Layer Origin
-    ctx.translate(offsetX, offsetY);
-
-    ctx.fillStyle = pattern;
-    // Fill the visible viewport (which is shifted by -offset in this transformed space)
-    ctx.fillRect(-offsetX, -offsetY, w / dpr, h / dpr);
-
-    ctx.restore();
-  } else {
-    ctx.fillStyle = `rgba(0,0,0,${fogOpacity})`;
-    ctx.fillRect(0, 0, w / dpr, h / dpr);
-  }
-
-  // 4. Query Visible Points
+  // 2. Query Visible Points
   const bounds = map.getBounds();
   const visiblePoints = grid.query(bounds);
 
@@ -193,12 +102,39 @@ export function FogCanvas({ revealed, radiusPx = 18, radiusMeters, fogOpacity = 
     return radiusPx;
   };
 
+  // Track zoom state to pause redraws
+  const isZooming = useRef(false);
+
+  // Redraw function ref to be accessible in effects
+  const redrawRef = useRef<() => void>(() => { });
+
+  useEffect(() => {
+    const onZoomStart = () => {
+      isZooming.current = true;
+    };
+
+    const onZoomEnd = () => {
+      isZooming.current = false;
+      redrawRef.current(); // Snap to sharp rendering
+    };
+
+    map.on("zoomstart", onZoomStart);
+    map.on("zoomend", onZoomEnd);
+
+    return () => {
+      map.off("zoomstart", onZoomStart);
+      map.off("zoomend", onZoomEnd);
+    };
+  }, [map]);
+
+
   useEffect(() => {
     let pane = map.getPane("fog-pane");
     if (!pane) {
       pane = map.createPane("fog-pane");
       pane.style.zIndex = "390";
       pane.style.pointerEvents = "none";
+      pane.classList.add("leaflet-zoom-animated");
     }
 
     const canvas = document.createElement("canvas");
@@ -219,18 +155,8 @@ export function FogCanvas({ revealed, radiusPx = 18, radiusMeters, fogOpacity = 
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // We rely on Leaflet to position the pane?
-    // Actually typically dealing with Canvas overlay requires us to position the canvas.
-    // L.Canvas layer does this helper.
-    // Here we are doing raw canvas.
-    // We need to update size/pos on move.
-
-    // NOTE: When using 'zoomend', the scale changes, so we must redraw.
-    // During zoom, it might look weird unless wrapped in a custom layer.
-    // For now, simple redraw is acceptable for MVP.
-
     const redraw = () => {
-      if (!canvas) return;
+      if (!canvas || isZooming.current) return;
       const size = map.getSize();
       const topLeft = map.containerPointToLayerPoint([0, 0]);
       DomUtil.setPosition(canvas, topLeft);
@@ -245,14 +171,19 @@ export function FogCanvas({ revealed, radiusPx = 18, radiusMeters, fogOpacity = 
       if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       const currentRadius = getRadiusInPx();
+      if (currentRadius <= 0) return; // Guard against negative/zero radius
+
       drawFog(canvas, map, grid, currentRadius, fogOpacity);
     };
 
+    // Update the ref so the zoom handler can call it
+    redrawRef.current = redraw;
+
     redraw();
 
-    map.on("resize move zoomend viewreset", redraw);
+    map.on("resize move viewreset", redraw);
     return () => {
-      map.off("resize move zoomend viewreset", redraw);
+      map.off("resize move viewreset", redraw);
     };
   }, [map, grid, fogOpacity, radiusPx, radiusMeters]);
 

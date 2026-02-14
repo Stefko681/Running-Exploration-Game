@@ -4,7 +4,7 @@ import "leaflet/dist/leaflet.css";
 import type { Map as LeafletMap } from "leaflet";
 import { DivIcon } from "leaflet";
 import { LocateFixed, Square, Play, Flame, Share2, Radio, Package, Activity, Gauge, Navigation, Compass, HelpCircle, Map as MapIcon, Lock, Timer, Zap, Pause, ChevronUp, ChevronDown, Shield } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, Polyline, TileLayer, useMap, Marker, Popup } from "react-leaflet";
 import { BottomSheet } from "../components/BottomSheet";
 import { FogCanvas } from "../components/FogCanvas";
@@ -143,6 +143,53 @@ export function MapScreen() {
     refreshDrops(p);
   }, [reading?.lat, reading?.lng, reading?.t]);
 
+  // Auto-pause / Auto-resume logic
+  const lastSpeedCheck = useRef<number>(Date.now());
+  const lowSpeedAccumulator = useRef<number>(0);
+  const highSpeedAccumulator = useRef<number>(0);
+
+  useEffect(() => {
+    if (!isRunning || !reading) {
+      lowSpeedAccumulator.current = 0;
+      highSpeedAccumulator.current = 0;
+      return;
+    }
+
+    const now = Date.now();
+    const dt = (now - lastSpeedCheck.current) / 1000;
+    lastSpeedCheck.current = now;
+
+    // Use GPS speed if available, otherwise 0 (fallback)
+    // We could calculate speed from d/t but GPS speed is usually more stable for this
+    const currentSpeed = reading.speed ?? 0;
+    const PAUSE_THRESHOLD_MS = 0.6; // < 0.6 m/s (~2.1 km/h) counts as stopped
+    const RESUME_THRESHOLD_MS = 1.2; // > 1.2 m/s (~4.3 km/h) counts as running
+    const PAUSE_DELAY_S = 10; // Must be stopped for 10s to pause
+    const RESUME_DELAY_S = 3; // Must be moving for 3s to resume
+
+    if (currentSpeed < PAUSE_THRESHOLD_MS) {
+      lowSpeedAccumulator.current += dt;
+      highSpeedAccumulator.current = 0; // Reset resume counter
+
+      if (!isPaused && lowSpeedAccumulator.current >= PAUSE_DELAY_S) {
+        pause();
+        lowSpeedAccumulator.current = 0; // Reset after action
+      }
+    } else if (currentSpeed > RESUME_THRESHOLD_MS) {
+      highSpeedAccumulator.current += dt;
+      lowSpeedAccumulator.current = 0; // Reset pause counter
+
+      if (isPaused && highSpeedAccumulator.current >= RESUME_DELAY_S) {
+        resume();
+        highSpeedAccumulator.current = 0; // Reset after action
+      }
+    } else {
+      // In the "gap" between thresholds: maintain state, maybe decay accumulators?
+      // For now, just do nothing, don't reset accumulators immediately to allow fluff
+    }
+
+  }, [reading, isRunning, isPaused]);
+
   // On first load, try to center the map on the user's current location explicitly.
   useEffect(() => {
     if (!map) return;
@@ -225,15 +272,6 @@ export function MapScreen() {
   const speedKmh = (speedMs * 3.6).toFixed(1);
   const altitude = reading?.altitude ? Math.round(reading.altitude) : "---";
   const calories = estimateCalories(totalRunMeters, weightKg);
-
-  // Pace (min/km)
-  const paceStr = useMemo(() => {
-    if (!isRunning || elapsed === 0 || totalRunMeters < 10) return "--:--";
-    const paceSecPerKm = elapsed / (totalRunMeters / 1000);
-    const m = Math.floor(paceSecPerKm / 60);
-    const s = Math.floor(paceSecPerKm % 60);
-    return `${m}:${s.toString().padStart(2, '0')}`;
-  }, [elapsed, totalRunMeters, isRunning]);
 
   // Dynamic exploration percentage based on selected city
   const explorationPercent = useMemo(() => {
@@ -494,13 +532,30 @@ export function MapScreen() {
                   </div>
 
                   {/* PACE */}
-                  <div className="flex flex-col items-center justify-center rounded-xl border border-purple-500/20 bg-slate-900/60 p-2 backdrop-blur-md">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-purple-400 mb-1 flex items-center gap-1">
-                      <Activity size={10} /> PACE
-                    </div>
-                    <div className="text-lg font-black text-white lining-nums tabular-nums">
-                      {paceStr}<span className="text-[10px] ml-0.5 text-slate-400 font-normal">min/km</span>
-                    </div>
+                  {/* SUPPLY DROP DIRECTION */}
+                  <div className="flex flex-col items-center justify-center rounded-xl border border-amber-500/20 bg-slate-900/60 p-2 backdrop-blur-md relative overflow-hidden">
+                    {nearestDropInfo ? (
+                      <>
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400 mb-1 flex items-center gap-1 z-10">
+                          <Navigation size={10} style={{ transform: `rotate(${relativeBearing}deg)` }} className="transition-transform duration-500" /> TARGET
+                        </div>
+                        <div className="text-lg font-black text-white lining-nums tabular-nums z-10">
+                          {Math.round(nearestDropInfo.distance)}<span className="text-[10px] ml-0.5 text-slate-400 font-normal">m</span>
+                        </div>
+                        {nearestDropInfo.distance < 100 && (
+                          <div className="absolute inset-0 bg-amber-500/10 animate-pulse z-0" />
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1 flex items-center gap-1">
+                          <Radio size={10} /> SIG
+                        </div>
+                        <div className="text-sm font-bold text-slate-400">
+                          NO SIGNAL
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   {/* CALORIES */}

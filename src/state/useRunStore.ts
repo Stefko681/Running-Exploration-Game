@@ -256,6 +256,7 @@ export const useRunStore = create<RunState>((set, get) => ({
       runStartedAt: now,
     }));
     audio.startRun();
+    audio.startBackgroundLoop();
   },
 
   pause: () => {
@@ -389,6 +390,7 @@ export const useRunStore = create<RunState>((set, get) => ({
     });
     performSave();
     audio.stopRun();
+    audio.stopBackgroundLoop();
 
     // Auto-sync leaderboard with improved score formula
     import("./useLeaderboardStore").then(({ useLeaderboardStore }) => {
