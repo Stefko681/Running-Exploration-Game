@@ -155,6 +155,11 @@ export const leaderboardService = {
     },
 
     async uploadScore(userId: string, league: string, score: number, distance: number) {
+        // We use upsert, but we should ensure we don't accidentally keep a higher score if we want to reset.
+        // However, standard leaderboard logic puts the highest score. 
+        // But since our user requested a "reset" or "fix", we should allow overwriting even if lower.
+        // Supabase upsert by default overwrites unless we use ON CONFLICT DO NOTHING.
+        // So this code ALREADY overwrites.
         const { error } = await supabase
             .from('leaderboard')
             .upsert({

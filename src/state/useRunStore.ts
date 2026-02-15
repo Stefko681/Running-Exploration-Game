@@ -578,6 +578,33 @@ export const useRunStore = create<RunState>((set, get) => ({
         );
       });
 
+      // Recalculate Achievements for imported data
+      const state = get();
+      const totalDistance = state.runs.reduce((acc, r) => acc + r.distanceMeters, 0);
+      let unlockedDistricts = 0;
+      let totalDistricts = 0;
+      try {
+        const ds = useDistrictStore.getState();
+        unlockedDistricts = ds.unlockedDistricts?.length ?? 0;
+        totalDistricts = ds.districts?.length ?? 0;
+      } catch { /* ignore */ }
+
+      const newUnlocked = checkNewAchievements(state.achievements, {
+        totalDistance,
+        totalRuns: state.runs.length,
+        totalRevealed: state.revealed.length,
+        currentStreak: state.currentStreak,
+        totalSupplyDrops: state.supplyDrops.filter(d => d.collected).length,
+        unlockedDistricts,
+        totalDistricts,
+        lastRun: state.runs[state.runs.length - 1] // Use last run as context
+      });
+
+      if (newUnlocked.length > 0) {
+        set({ achievements: [...state.achievements, ...newUnlocked] });
+        performSave();
+      }
+
       // Force update leaderboard score
       import("./useLeaderboardStore").then(({ useLeaderboardStore }) => {
         const lb = useLeaderboardStore.getState();

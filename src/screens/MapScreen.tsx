@@ -195,10 +195,18 @@ export function MapScreen() {
     if (!map) return;
     if (!("geolocation" in navigator)) return;
 
+    let isMounted = true;
+
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        if (!isMounted) return;
         const { latitude, longitude } = pos.coords;
-        map.setView([latitude, longitude], runZoom);
+        // Verify map is still usable
+        try {
+          map.setView([latitude, longitude], runZoom);
+        } catch (e) {
+          console.warn("Map interaction on unmount prevented", e);
+        }
       },
       () => {
         // ignore errors and keep default center (Sofia)
@@ -209,6 +217,10 @@ export function MapScreen() {
         maximumAge: 10000
       }
     );
+
+    return () => {
+      isMounted = false;
+    };
   }, [map]);
 
 
