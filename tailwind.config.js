@@ -3,6 +3,10 @@ export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
+      /**
+       * Dynamic Theme Tokens
+       * Mapped to CSS variables in index.css for runtime switching (dark/light/contrast).
+       */
       colors: {
         // Core app palette – dynamic themes
         app: {
