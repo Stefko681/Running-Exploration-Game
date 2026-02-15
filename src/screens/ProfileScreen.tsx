@@ -13,7 +13,6 @@ import { useDistrictStore } from "../state/useDistrictStore";
 import { useSettingsStore } from "../state/useSettingsStore";
 import { AuthScreen } from "./AuthScreen";
 import { LogOut, User as UserIcon } from "lucide-react";
-import { supabase } from "../services/supabase";
 
 // Categories config with labels and colors
 const CATEGORIES: { id: AchievementCategory | "all"; label: string; color: string }[] = [
@@ -44,7 +43,7 @@ export function ProfileScreen() {
     const [showAuth, setShowAuth] = useState(false);
 
     const handleLogout = async () => {
-        await supabase.auth.signOut();
+        await useLeaderboardStore.getState().signOut();
     };
 
     // Derived stats

@@ -120,6 +120,7 @@ export const useLeaderboardStore = create<LeaderboardState>()(
                         }
                     } else {
                         set({ session: null, user: null, isGuest: true, username: "Guest" });
+                        useRunStore.getState().resetAll();
                     }
                 });
             },
