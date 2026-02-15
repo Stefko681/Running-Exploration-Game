@@ -1,3 +1,6 @@
+-- CityQuest RLS Policies
+-- Defines security rules for Profiles vs Leaderboard tables
+
 -- ENABLE RLS
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE leaderboard ENABLE ROW LEVEL SECURITY;
