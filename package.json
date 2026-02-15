@@ -2,6 +2,17 @@
   "name": "city-quest",
   "private": true,
   "version": "0.1.0",
+  "description": "A gamified running exploration app for Sofia, featuring fog-of-war mechanics and district control.",
+  "keywords": [
+    "running",
+    "exploration",
+    "gamification",
+    "sofia",
+    "react",
+    "leaflet"
+  ],
+  "author": "Stefko Nikolaev <stefkonikolaev3@gmail.com>",
+  "license": "UNLICENSED",
   "type": "module",
   "scripts": {
     "dev": "vite",
