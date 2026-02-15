@@ -4,6 +4,7 @@ import { GPS_MAX_SPEED_M_PER_S, GPS_MIN_STEP_METERS } from "../config";
 import type { LatLngPoint, RunSummary } from "../types";
 import { audio } from "../utils/audio";
 import { haversineMeters } from "../utils/geo";
+import { calculateScore } from "../utils/gamification";
 import { checkNewAchievements } from "../utils/achievements";
 import { generateDailyDrops, isNearDrop, type SupplyDrop } from "../utils/supplyDrops";
 import { loadPersisted, savePersisted } from "./storage";
@@ -578,8 +579,7 @@ export const useRunStore = create<RunState>((set, get) => ({
       });
 
       // Force update leaderboard score
-      import("./useLeaderboardStore").then(async ({ useLeaderboardStore }) => {
-        const { calculateScore } = await import("../utils/gamification");
+      import("./useLeaderboardStore").then(({ useLeaderboardStore }) => {
         const lb = useLeaderboardStore.getState();
 
         if (!lb.isGuest) {

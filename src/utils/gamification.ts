@@ -60,8 +60,8 @@ export function calculateScore(points: { lat: number, lng: number }[], distanceM
     const uniqueCells = new Set(points.map(p => cellKey(p))).size;
     const distanceKm = distanceMeters / 1000;
 
-    // Old inflated formula: Math.floor((uniqueCells * 50) + (Math.sqrt(distanceKm) * 500));
-    // New balanced formula: 1 point per cell (approx 100m2) + 100 points per km
-    // This results in ~1000-1500 points for a nice 5km run.
-    return Math.floor((uniqueCells * 1) + (distanceKm * 100));
+    // Formula: 0.25 point per cell + 20 points per km
+    // 5km run (~2000 cells) -> 500 + 100 = 600 XP.
+    // 10km run (~4000 cells) -> 1000 + 200 = 1200 XP.
+    return Math.floor((uniqueCells * 0.25) + (distanceKm * 20));
 }

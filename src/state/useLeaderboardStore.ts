@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { useRunStore } from "./useRunStore";
 import { leaderboardService, LeaderboardRow } from "../services/leaderboardService";
+import { calculateScore } from "../utils/gamification";
 import { supabase } from "../services/supabase";
 import { Session, User } from "@supabase/supabase-js";
 
@@ -105,11 +106,8 @@ export const useLeaderboardStore = create<LeaderboardState>()(
 
                             if (totalDistKm > 0) {
                                 // Calculate score using centralized formula
-                                const { calculateScore } = await import("../utils/gamification");
                                 const score = calculateScore(revealed, totalDistMeters);
 
-                                // Upload
-                                get().uploadMyScore(score, totalDistKm);
                                 // Upload
                                 get().uploadMyScore(score, totalDistKm);
                             }
