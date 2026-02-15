@@ -24,8 +24,13 @@ export default defineConfig({
       }
     })
   ],
+  build: {
+    outDir: "dist",
+    sourcemap: false
+  },
   server: {
-    host: true
+    host: true, // Listen on all local IPs
+    port: 5173
   }
 });
 
