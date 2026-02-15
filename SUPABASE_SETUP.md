@@ -1,4 +1,4 @@
-# Supabase Setup Guide for Absolute Beginners
+# ⚡ Supabase Setup Guide for CityQuest
 
 This guide will help you set up the backend database for your game. Don't worry, it's free and takes about 5 minutes.
 
