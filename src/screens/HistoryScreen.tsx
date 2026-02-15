@@ -4,7 +4,7 @@ import { useRunStore } from "../state/useRunStore";
 import { useDistrictStore } from "../state/useDistrictStore";
 import type { LatLngPoint, RunSummary } from "../types";
 import { formatKm } from "../utils/geo";
-import { getRank } from "../utils/gamification";
+import { getRank, calculateScore } from "../utils/gamification";
 import { ShareCard } from "../components/ShareCard";
 import { RunDetailModal } from "../components/RunDetailModal";
 import { Trash2, CheckCircle, AlertTriangle } from "lucide-react";
@@ -109,6 +109,7 @@ function RunItem({
 }) {
   const duration = run.endedAt - run.startedAt;
   const speed = calcSpeed(run.distanceMeters, duration);
+  const xp = calculateScore(run.points, run.distanceMeters);
 
   return (
     <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-800/80 bg-slate-900/40 px-4 py-3">
@@ -125,7 +126,7 @@ function RunItem({
           </span>
         </div>
         <div className="mt-1 text-xs text-slate-400">
-          {formatDurationMs(duration)} • {run.points.length} pts
+          {formatDurationMs(duration)} • <span className="text-violet-400 font-semibold">{xp} XP</span>
         </div>
       </div>
       <div className="flex flex-none items-center gap-1.5">

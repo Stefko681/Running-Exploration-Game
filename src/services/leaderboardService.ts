@@ -104,6 +104,56 @@ export const leaderboardService = {
     /**
      * Upload the user's latest score
      */
+    async uploadRun(run: any) {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const { error } = await supabase
+                .from('runs')
+                .upsert({
+                    id: run.id,
+                    user_id: user.id,
+                    started_at: run.startedAt,
+                    ended_at: run.endedAt,
+                    distance_meters: run.distanceMeters,
+                    points: run.points,
+                    summary_data: { pausedDuration: run.pausedDuration }
+                });
+
+            if (error) throw error;
+        } catch (err) {
+            console.error("Failed to upload run:", err);
+            throw err;
+        }
+    },
+
+    async fetchRuns() {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return [];
+
+            const { data, error } = await supabase
+                .from('runs')
+                .select('*')
+                .order('started_at', { ascending: true });
+
+            if (error) throw error;
+
+            return data.map((r: any) => ({
+                id: r.id,
+                startedAt: r.started_at,
+                endedAt: r.ended_at,
+                distanceMeters: r.distance_meters,
+                points: r.points,
+                pausedDuration: r.summary_data?.pausedDuration || 0
+            }));
+        } catch (err) {
+            console.error("Failed to fetch runs:", err);
+            return [];
+        }
+    },
+
     async uploadScore(userId: string, league: string, score: number, distance: number) {
         const { error } = await supabase
             .from('leaderboard')

@@ -46,3 +46,23 @@ export function getRank(totalMeters: number) {
         remaining: nextRank ? nextRank.minMeters - totalMeters : 0
     };
 }
+
+/**
+ * Calculate the Game Score (XP) for a run or total progress.
+ * Formula: (Unique Cells * 50) + (DistanceKm * 500)
+ */
+export function calculateScore(points: { lat: number, lng: number }[], distanceMeters: number): number {
+    if (distanceMeters <= 0 || !points || points.length === 0) return 0;
+
+    // Cell key with 4 decimals precision (approx 11m grid)
+    const cellKey = (p: { lat: number, lng: number }) => `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`;
+
+    const uniqueCells = new Set(points.map(p => cellKey(p))).size;
+    const distanceKm = distanceMeters / 1000;
+
+    // Score = Exploration (50 per cell) + Distance (500 per sqrt(km))
+    // Note: The formula used in stores was sqrt(dist), let's stick to that or decide on linear.
+    // In useRunStore/useLeaderboardStore we used: Math.floor((uniqueCells * 50) + (Math.sqrt(totalDistKm) * 500));
+
+    return Math.floor((uniqueCells * 50) + (Math.sqrt(distanceKm) * 500));
+}

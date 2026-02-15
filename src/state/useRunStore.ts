@@ -8,6 +8,7 @@ import { checkNewAchievements } from "../utils/achievements";
 import { generateDailyDrops, isNearDrop, type SupplyDrop } from "../utils/supplyDrops";
 import { loadPersisted, savePersisted } from "./storage";
 import { useDistrictStore } from "./useDistrictStore";
+import { leaderboardService } from "../services/leaderboardService";
 
 type RunState = {
   isRunning: boolean;
@@ -58,6 +59,7 @@ type RunState = {
   refreshDrops: (location: LatLngPoint) => void;
   init: () => Promise<void>;
   isHydrated: boolean;
+  syncFromCloud: () => Promise<void>;
 };
 
 
@@ -278,57 +280,62 @@ export const useRunStore = create<RunState>((set, get) => ({
   },
 
   stop: () => {
-    set((s) => {
-      if (!s.isRunning || s.currentRun.length < 2 || !s.runStartedAt) {
-        return {
-          ...s,
-          isRunning: false,
-          isPaused: false,
-          pausedAt: undefined,
-          pausedDuration: 0,
-          lastAccepted: undefined,
-          runStartedAt: undefined,
-          currentRun: [],
-          totalRunMeters: 0,
-          supplyDrops: []
-        };
-      }
+    const s = get();
+    if (!s.isRunning || s.currentRun.length < 2 || !s.runStartedAt) {
+      set({
+        isRunning: false,
+        isPaused: false,
+        pausedAt: undefined,
+        pausedDuration: 0,
+        lastAccepted: undefined,
+        runStartedAt: undefined,
+        currentRun: [],
+        totalRunMeters: 0,
+        supplyDrops: []
+      });
+      performSave();
+      return;
+    }
 
-      const endedAt = s.currentRun[s.currentRun.length - 1]!.t;
+    const endedAt = s.currentRun[s.currentRun.length - 1]!.t;
 
-      // Calculate actual duration excluding paused time
-      let totalPaused = s.pausedDuration;
-      if (s.isPaused && s.pausedAt) {
-        totalPaused += Date.now() - s.pausedAt;
-      }
+    // Calculate actual duration excluding paused time
+    let totalPaused = s.pausedDuration;
+    if (s.isPaused && s.pausedAt) {
+      totalPaused += Date.now() - s.pausedAt;
+    }
 
-      const summary: RunSummary = {
-        id: `${s.runStartedAt}-${endedAt}`,
-        startedAt: s.runStartedAt,
-        endedAt,
-        distanceMeters: s.totalRunMeters,
-        points: s.currentRun,
-        pausedDuration: totalPaused,
-      };
+    const summary: RunSummary = {
+      id: `${s.runStartedAt}-${endedAt}`,
+      startedAt: s.runStartedAt,
+      endedAt,
+      distanceMeters: s.totalRunMeters,
+      points: s.currentRun,
+      pausedDuration: totalPaused,
+    };
 
-      const runs = [...s.runs, summary];
+    // Upload to Cloud
+    leaderboardService.uploadRun(summary).catch(console.error);
+
+    set((state) => {
+      const runs = [...state.runs, summary];
 
       // Streak Logic
-      let streak = s.currentStreak;
-      let bestStreak = s.bestStreak;
+      let streak = state.currentStreak;
+      let bestStreak = state.bestStreak;
       const now = Date.now();
 
-      if (!s.lastRunDate) {
+      if (!state.lastRunDate) {
         streak = 1;
       } else {
-        if (isSameDay(now, s.lastRunDate)) {
+        if (isSameDay(now, state.lastRunDate)) {
           // Already ran today, maintain streak (but make sure it's at least 1)
           if (streak < 1) streak = 1;
-        } else if (isNextDay(now, s.lastRunDate)) {
+        } else if (isNextDay(now, state.lastRunDate)) {
           streak += 1;
         } else {
           // Missed a day — check for streak shield
-          if (s.hasStreakShield && streak > 0) {
+          if (state.hasStreakShield && streak > 0) {
             // Shield consumed — streak continues
             streak += 1;
           } else {
@@ -340,8 +347,8 @@ export const useRunStore = create<RunState>((set, get) => ({
 
       // Check for new achievements
       const totalDistance = runs.reduce((acc, r) => acc + r.distanceMeters, 0);
-      const totalRevealed = s.revealed.length;
-      const totalSupplyDrops = s.supplyDrops.filter(d => d.collected).length;
+      const totalRevealed = state.revealed.length; // Approximate, assuming points don't overlap much (simplified)
+      const totalSupplyDrops = state.supplyDrops.filter(d => d.collected).length;
 
       let unlockedDistricts = 0;
       let totalDistricts = 0;
@@ -351,7 +358,7 @@ export const useRunStore = create<RunState>((set, get) => ({
         totalDistricts = ds.districts?.length ?? 0;
       } catch { /* ignore */ }
 
-      const newUnlocked = checkNewAchievements(s.achievements, {
+      const newUnlocked = checkNewAchievements(state.achievements, {
         totalDistance,
         totalRuns: runs.length,
         totalRevealed,
@@ -367,11 +374,11 @@ export const useRunStore = create<RunState>((set, get) => ({
       }
 
       // Consume streak shield if it was used
-      const shieldUsed = !s.lastRunDate ? false :
-        !isSameDay(now, s.lastRunDate) && !isNextDay(now, s.lastRunDate) && s.hasStreakShield;
+      const shieldUsed = !state.lastRunDate ? false :
+        !isSameDay(now, state.lastRunDate) && !isNextDay(now, state.lastRunDate) && state.hasStreakShield;
 
       return {
-        ...s,
+        ...state,
         isRunning: false,
         isPaused: false,
         pausedAt: undefined,
@@ -384,10 +391,11 @@ export const useRunStore = create<RunState>((set, get) => ({
         currentStreak: streak,
         bestStreak,
         lastRunDate: now,
-        achievements: [...s.achievements, ...newUnlocked],
-        hasStreakShield: shieldUsed ? false : s.hasStreakShield,
+        achievements: [...state.achievements, ...newUnlocked],
+        hasStreakShield: shieldUsed ? false : state.hasStreakShield,
       };
     });
+
     performSave();
     audio.stopRun();
     audio.stopBackgroundLoop();
@@ -395,7 +403,6 @@ export const useRunStore = create<RunState>((set, get) => ({
     // Auto-sync leaderboard with improved score formula
     import("./useLeaderboardStore").then(({ useLeaderboardStore }) => {
       // Import cellKey dynamically or ensure it's imported at top
-      // But imports inside function are messy. Let's use the imported helper if available or reimplement string key
       const cellKey = (p: LatLngPoint) => `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`;
 
       const lb = useLeaderboardStore.getState();
@@ -562,6 +569,15 @@ export const useRunStore = create<RunState>((set, get) => ({
       runs: data.runs ?? []
     }));
     performSave();
+
+    // Sync imported runs to Cloud
+    if (data.runs && data.runs.length > 0) {
+      data.runs.forEach(run => {
+        leaderboardService.uploadRun(run).catch(err =>
+          console.error(`Failed to sync imported run ${run.id}`, err)
+        );
+      });
+    }
   },
 
   getLifetimeStats: () => {
@@ -593,4 +609,41 @@ export const useRunStore = create<RunState>((set, get) => ({
       performSave();
     }
   },
+
+  syncFromCloud: async () => {
+    try {
+      const cloudRuns = await leaderboardService.fetchRuns();
+      if (cloudRuns.length === 0) return;
+
+      set(state => {
+        // Merge runs (Cloud wins if duplicate ID, but IDs are timestamps so handled by ID check)
+        // Actually, we should just add missing runs.
+        const existingIds = new Set(state.runs.map(r => r.id));
+        const newRuns = cloudRuns.filter((r: any) => !existingIds.has(r.id));
+
+        if (newRuns.length === 0) return state;
+
+        const allRuns = [...state.runs, ...newRuns].sort((a, b) => a.startedAt - b.startedAt);
+
+        // Rebuild revealed map from all runs
+        // This is expensive but necessary for sync
+        const allPoints = allRuns.flatMap(r => r.points);
+        // We can't easily dedup points here without a spatial index, but 'revealed' is just an array.
+        // Let's just create a new revealed array from all runs.
+        // Optimization: user might have thousands of points.
+        // For now, let's just accept the merged array.
+
+        return {
+          ...state,
+          runs: allRuns,
+          revealed: allPoints, // This replaces local revealed with cloud+local source of truth
+          // Recalculate basic stats
+          totalRunMeters: allRuns.reduce((acc, r) => acc + r.distanceMeters, 0)
+        };
+      });
+      performSave();
+    } catch (e) {
+      console.error("Sync failed", e);
+    }
+  }
 }));

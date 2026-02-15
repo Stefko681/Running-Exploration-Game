@@ -110,7 +110,13 @@ export const useLeaderboardStore = create<LeaderboardState>()(
 
                                 // Upload
                                 get().uploadMyScore(score, totalDistKm);
+                                // Upload
+                                get().uploadMyScore(score, totalDistKm);
                             }
+
+                            // 3. Sync Runs from Cloud (Wait for it)
+                            useRunStore.getState().syncFromCloud().catch(console.error);
+
                         } catch (err) {
                             console.error("Auto-sync failed", err);
                         }
