@@ -1,3 +1,6 @@
+-- CityQuest Runs Schema
+-- Definition for run storage and history tracking
+
 -- Create runs table for storing detailed run history
 create table public.runs (
   id text primary key, -- client-generated ID (start-end timestamp)
