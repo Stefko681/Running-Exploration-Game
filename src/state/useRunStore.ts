@@ -576,6 +576,21 @@ export const useRunStore = create<RunState>((set, get) => ({
           console.error(`Failed to sync imported run ${run.id}`, err)
         );
       });
+
+      // Force update leaderboard score
+      import("./useLeaderboardStore").then(async ({ useLeaderboardStore }) => {
+        const { calculateScore } = await import("../utils/gamification");
+        const lb = useLeaderboardStore.getState();
+
+        if (!lb.isGuest) {
+          const state = get();
+          const totalDistance = state.runs.reduce((acc, r) => acc + r.distanceMeters, 0);
+          const score = calculateScore(state.revealed, totalDistance);
+
+          // Upload immediately
+          lb.uploadMyScore(score, totalDistance / 1000);
+        }
+      });
     }
   },
 
