@@ -104,9 +104,9 @@ export const useLeaderboardStore = create<LeaderboardState>()(
                             const totalDistKm = totalDistMeters / 1000;
 
                             if (totalDistKm > 0) {
-                                // Calculate score (same formula as useRunStore)
-                                const uniqueCells = new Set(revealed.map((p: any) => `${Math.round(p.lat * 200)},${Math.round(p.lng * 200)}`)).size;
-                                const score = Math.floor((uniqueCells * 50) + (Math.sqrt(totalDistKm) * 500));
+                                // Calculate score using centralized formula
+                                const { calculateScore } = await import("../utils/gamification");
+                                const score = calculateScore(revealed, totalDistMeters);
 
                                 // Upload
                                 get().uploadMyScore(score, totalDistKm);
@@ -159,6 +159,7 @@ export const useLeaderboardStore = create<LeaderboardState>()(
             signOut: async () => {
                 await supabase.auth.signOut();
                 set({ isGuest: true, user: null, session: null, username: "Guest" });
+                useRunStore.getState().resetAll();
             },
 
             uploadMyScore: async (score, distance) => {

@@ -60,9 +60,8 @@ export function calculateScore(points: { lat: number, lng: number }[], distanceM
     const uniqueCells = new Set(points.map(p => cellKey(p))).size;
     const distanceKm = distanceMeters / 1000;
 
-    // Score = Exploration (50 per cell) + Distance (500 per sqrt(km))
-    // Note: The formula used in stores was sqrt(dist), let's stick to that or decide on linear.
-    // In useRunStore/useLeaderboardStore we used: Math.floor((uniqueCells * 50) + (Math.sqrt(totalDistKm) * 500));
-
-    return Math.floor((uniqueCells * 50) + (Math.sqrt(distanceKm) * 500));
+    // Old inflated formula: Math.floor((uniqueCells * 50) + (Math.sqrt(distanceKm) * 500));
+    // New balanced formula: 1 point per cell (approx 100m2) + 100 points per km
+    // This results in ~1000-1500 points for a nice 5km run.
+    return Math.floor((uniqueCells * 1) + (distanceKm * 100));
 }
