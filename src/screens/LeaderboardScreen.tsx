@@ -2,9 +2,10 @@ import { useMemo, useEffect, useState } from "react";
 import { Trophy, Crown, User, AlertCircle, Loader2, SignalHigh, SignalZero, X, CheckCircle2 } from "lucide-react";
 import { useRunStore } from "../state/useRunStore";
 import { useLeaderboardStore, League } from "../state/useLeaderboardStore";
-import { cellKey } from "../utils/geo";
 import { RunnerProfileModal } from "../components/RunnerProfileModal";
 import { AuthScreen } from "./AuthScreen";
+
+import { calculateScore } from "../utils/gamification";
 
 const LEAGUE_COLORS: Record<League, string> = {
     "Bronze": "text-orange-700 bg-orange-900/20 border-orange-800",
@@ -34,13 +35,13 @@ export function LeaderboardScreen() {
 
     // 1. Calculate User Stats (Client Side Authority for now)
     const userStats = useMemo(() => {
-        const uniqueCells = new Set(revealed.map(p => cellKey(p, 4))).size;
         const totalDistKm = runs.reduce((acc, r) => acc + r.distanceMeters, 0) / 1000;
-        const score = Math.floor((uniqueCells * 50) + (Math.sqrt(totalDistKm) * 500));
+        // Use centralized score formula
+        const score = calculateScore(revealed, totalDistKm * 1000);
 
-        const isGuestMode = useLeaderboardStore.getState().isGuest; // Access fresh state if needed, or rely on hook
+        const isGuestMode = isGuest;
         return {
-            id: isGuestMode ? "guest_me" : (localStorage.getItem("cityquest_user_id") || "user_me"),
+            id: isGuestMode ? "guest_me" : (useLeaderboardStore.getState().user?.id || "user_me"),
             name: isGuestMode ? "Guest (You)" : useLeaderboardStore.getState().username,
             score,
             distance: totalDistKm,
@@ -50,7 +51,7 @@ export function LeaderboardScreen() {
             combat_style: useLeaderboardStore.getState().combatStyle || "Balanced",
             badges: useLeaderboardStore.getState().badges || []
         };
-    }, [revealed, runs, currentLeague, players]); // depend on players to force re-calc if we join
+    }, [revealed, runs, currentLeague, players, isGuest]); // depend on players to force re-calc if we join
 
     // 2. Sync on Mount
     useEffect(() => {
