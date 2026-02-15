@@ -52,6 +52,10 @@ export default function App() {
     }} />;
   }
 
+  /**
+   * Main Application Layout
+   * Handles top-level routing between Map, History, Profile, and Leaderboard.
+   */
   return (
     <>
       <div className="app-shell">
